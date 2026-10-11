@@ -37,7 +37,7 @@ setInterval(() => {
 const soundBtn = $('#soundBtn');
 const paintSound = () => {
   soundBtn.classList.toggle('off', sfx.muted);
-  soundBtn.setAttribute('aria-label', sfx.muted ? t('Turn sound on', 'شغّل الصوت') : t('Turn sound off', 'اقفل الصوت'));
+  soundBtn.setAttribute('aria-label', sfx.muted ? t('Turn sound on', 'Sha88al el soot') : t('Turn sound off', 'E2fel el soot'));
 };
 soundBtn.addEventListener('click', () => {
   sfx.toggle();
@@ -102,11 +102,11 @@ setTimeout(hideLoader, 6000);
 
 let rajiea = null;
 const LINES = {
-  wave: t('Hi there 👋', 'أهلًا 👋'), jump: t('Whee!', 'ييييه!'), spin: t('Ta-da ✨', 'تادا ✨'), dance: t('Dance break 🎶', 'بريك رقص 🎶'), wink: '😉',
-  floss: t('The floss dance — dentist approved 🪥', 'رقصة الخيط — بموافقة الدكتورة 🪥'), candy: t('Is that… sugar? 😱', 'ده… سكر؟ 😱'), sneeze: t('Achoo! Excuse me 🤧', 'هاتشو! آسفة 🤧'),
-  selfie: t('Say cheese 📸', 'قول تشيز 📸'), matcha: t('Matcha o’clock 🍵', 'وقت الماتشا 🍵'),
+  wave: t('Hi there 👋', 'Ahlan 👋'), jump: t('Whee!', 'Yeeeeh!'), spin: t('Ta-da ✨', 'Tada ✨'), dance: t('Dance break 🎶', 'Break ra2s 🎶'), wink: '😉',
+  floss: t('The floss dance — dentist approved 🪥', 'Ra2set el khet — b mowaf2et el doctora 🪥'), candy: t('Is that… sugar? 😱', 'Dah… sokkar? 😱'), sneeze: t('Achoo! Excuse me 🤧', 'Hatshoo! Asfa 🤧'),
+  selfie: t('Say cheese 📸', 'Ool cheese 📸'), matcha: t('Matcha o’clock 🍵', 'Wa2t el matcha 🍵'),
 };
-const OUTFIT_LINES = { clinic: t('Back to the clinic 🦷', 'راجعة العيادة 🦷'), city: t('City day! 📱', 'يوم خروج! 📱'), cozy: t('Cozy mode ☁️', 'وضع الراحة ☁️') };
+const OUTFIT_LINES = { clinic: t('Back to the clinic 🦷', 'Rag3a el 3eyada 🦷'), city: t('City day! 📱', 'Yom khroog! 📱'), cozy: t('Cozy mode ☁️', 'Cozy mode ☁️') };
 
 try {
   const { createRajiea, createLittleRajiea, OUTFITS } = await import('./character.js');
@@ -119,11 +119,11 @@ try {
     pokes = [...pokes.filter((x) => now - x < 4000), now];
     if (pokes.length >= 7) {
       pokes = [];
-      setTimeout(() => { rajiea.play('dizzy'); rajiea.say(t('Okay, okay — I’m ticklish 😂', 'خلاص خلاص — أنا بتزغزغ 😂'), 2800); egg('tickle'); }, 300);
+      setTimeout(() => { rajiea.play('dizzy'); rajiea.say(t('Okay, okay — I’m ticklish 😂', 'Khalas khalas — ana btza8za8 😂'), 2800); egg('tickle'); }, 300);
     }
   };
-  rajiea.onHold = () => { rajiea.play('blush'); rajiea.say(t('Hehe, stop it 🙈', 'هيهي، بطّل بقى 🙈'), 2400); sfx.giggle(); egg('hold'); };
-  rajiea.onSpin = () => { rajiea.play('dizzy'); rajiea.say(t('Woah… the room is spinning 😵‍💫', 'إيه ده… الدنيا بتلف 😵‍💫'), 2600); sfx.whoosh(); egg('spinner'); };
+  rajiea.onHold = () => { rajiea.play('blush'); rajiea.say(t('Hehe, stop it 🙈', 'Hihi, battal ba2a 🙈'), 2400); sfx.giggle(); egg('hold'); };
+  rajiea.onSpin = () => { rajiea.play('dizzy'); rajiea.say(t('Woah… the room is spinning 😵‍💫', 'Eh dah… el donya btleff 😵‍💫'), 2600); sfx.whoosh(); egg('spinner'); };
 
   // selfies come out as polaroids
   let selfies = 0;
@@ -148,15 +148,15 @@ try {
       const w = img.width * k, h = img.height * k;
       g.drawImage(img, (S - w) / 2, -h * 0.02, w, h);
       const url = cv.toDataURL('image/jpeg', 0.9);
-      const day = new Date().toLocaleDateString(isAr ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+      const day = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
       const p = document.createElement('a');
       p.className = 'polaroid';
       p.href = url;
       p.download = 'rajiea-selfie.jpg';
       p.style.setProperty('--r', `${(Math.random() - 0.5) * 18}deg`);
       p.style.setProperty('--x', `${(Math.random() - 0.5) * 30}px`);
-      p.innerHTML = `<img src="${url}" alt="${t('A selfie with Rajiea', 'سيلفي مع راجية')}"><span>${t('Rajiea', 'راجية')} · ${day}</span>`;
-      p.title = t('Tap to save', 'دوس علشان تحفظها');
+      p.innerHTML = `<img src="${url}" alt="${t('A selfie with Rajiea', 'Selfie ma3a Rajiea')}"><span>${t('Rajiea', 'Rajiea')} · ${day}</span>`;
+      p.title = t('Tap to save', 'Dos 3ashan te7fazha');
       stageEl.appendChild(p);
       const all = $$('.polaroid', stageEl);
       if (all.length > 3) all[0].remove();
@@ -196,7 +196,7 @@ try {
         rajiea.setHijab('#ff1f8f');
         document.body.classList.add('hotpink');
         rajiea.play('dance');
-        rajiea.say(t('HOT PINK. Always. 💗', 'هوت بينك. دايمًا 💗'), 3000);
+        rajiea.say(t('HOT PINK. Always. 💗', 'Hot pink. Dayman 💗'), 3000);
         confetti({ x: innerWidth / 2, y: innerHeight / 3, count: 90, emoji: ['💗', '💖', '🩷'] });
         sfx.tada();
         egg('hotpink');
@@ -220,7 +220,7 @@ try {
 
   const zoomBtn = $('#zoomBtn');
   const paintZoom = (on) => {
-    zoomBtn.textContent = on ? t('↩ Full body', '↩ الصورة كاملة') : t('🔍 Close-up', '🔍 قرّب');
+    zoomBtn.textContent = on ? t('↩ Full body', '↩ El soora kamla') : t('🔍 Close-up', '🔍 2arrab');
     zoomBtn.setAttribute('aria-pressed', String(on));
   };
   paintZoom(false);
@@ -253,6 +253,17 @@ try {
   hideLoader();
 }
 
+// ── The pink banner pauses while you touch it, so things on it are easy to tap ──
+{
+  const track = $('.marquee .track');
+  let resume = 0;
+  $('.marquee').addEventListener('pointerdown', () => {
+    track.style.animationPlayState = 'paused';
+    clearTimeout(resume);
+    resume = setTimeout(() => { track.style.animationPlayState = ''; }, 3500);
+  });
+}
+
 // ── Scroll reveal, split headings & counters ──
 $$('[data-split]').forEach((el) => {
   const words = el.textContent.trim().split(/\s+/);
@@ -266,7 +277,7 @@ const reveal = new IntersectionObserver((entries) => {
     $$('[data-count]', e.target).forEach(countUp);
   }
 }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
-$$('[data-reveal], [data-split]').forEach((el) => reveal.observe(el));
+$$('[data-reveal], [data-split], .foot-name').forEach((el) => reveal.observe(el));
 
 function countUp(el) {
   const target = +el.dataset.count;
@@ -312,15 +323,15 @@ if (!fine && !calm) {
 
 // ── Her favourite things ──
 const FAV_FX = {
-  tamer: { emoji: ['🎤', '🎶', '⭐'], say: t('Nagm El Geel 🎤', 'نجم الجيل 🎤'), move: 'dance' },
-  barca: { emoji: ['⚽', '💙', '❤️'], colors: ['#004d98', '#a50044', '#edbb00'], say: t('Visca Barça! 💙❤️', 'فيسكا برسا! 💙❤️'), move: 'jump' },
-  matcha: { emoji: ['🍵', '🌿'], say: t('Matcha o’clock 🍵', 'وقت الماتشا 🍵'), move: 'matcha' },
-  capp: { emoji: ['☕', '🤎'], say: t('Extra foam, please ☕', 'رغوة زيادة لو سمحت ☕'), move: 'matcha' },
-  tira: { emoji: ['🍰', '☕'], say: t('Okay… one bite 🙈', 'خلاص… حتة صغيرة بس 🙈'), move: 'candy' },
-  roz: { emoji: ['🍮', '✨'], say: t('The golden top is mine 🍮', 'الوش الدهبي بتاعي 🍮'), move: 'candy' },
-  tawouk: { emoji: ['🥙', '🛵'], say: t('Is it here yet? 😅', 'لسه موصلش؟ 😅'), move: 'wave' },
-  pink: { emoji: ['💗', '💖', '🩷'], say: t('Hot pink is a personality 💗', 'الهوت بينك شخصية 💗'), move: 'spin' },
-  snap: { emoji: ['📸', '✨'], say: t('Say cheese 📸', 'قول تشيز 📸'), move: 'selfie' },
+  tamer: { emoji: ['🎤', '🎶', '⭐'], say: t('Nagm El Geel 🎤', 'Nagm el Geel 🎤'), move: 'dance' },
+  barca: { emoji: ['⚽', '💙', '❤️'], colors: ['#004d98', '#a50044', '#edbb00'], say: t('Visca Barça! 💙❤️', 'Visca Barça! 💙❤️'), move: 'jump' },
+  matcha: { emoji: ['🍵', '🌿'], say: t('Matcha o’clock 🍵', 'Wa2t el matcha 🍵'), move: 'matcha' },
+  capp: { emoji: ['☕', '🤎'], say: t('Extra foam, please ☕', 'Ra8wa zyada law sama7t ☕'), move: 'matcha' },
+  tira: { emoji: ['🍰', '☕'], say: t('Okay… one bite 🙈', 'Khalas… 7etta so8ayara bas 🙈'), move: 'candy' },
+  roz: { emoji: ['🍮', '✨'], say: t('The golden top is mine 🍮', 'El wesh el dahaby bta3y 🍮'), move: 'candy' },
+  tawouk: { emoji: ['🥙', '🛵'], say: t('Is it here yet? 😅', 'Lessa mawselsh? 😅'), move: 'wave' },
+  pink: { emoji: ['💗', '💖', '🩷'], say: t('Hot pink is a personality 💗', 'El hot pink shakhseya 💗'), move: 'spin' },
+  snap: { emoji: ['📸', '✨'], say: t('Say cheese 📸', 'Ool cheese 📸'), move: 'selfie' },
 };
 $('#favs').innerHTML = CONFIG.favourites.map((f, i) => `
   <button type="button" class="fav fav-${f.id}" data-fav="${f.id}" data-reveal style="--d:${i % 3}">
@@ -351,15 +362,15 @@ mfGrid.innerHTML = tips.map((tp, i) => `
         <span class="mf-num">#${i + 1}</span>
         <p class="mf-claim">${esc(tp.claim)}</p>
         <div class="mf-btns">
-          <button type="button" data-guess="myth">${t('Myth', 'خرافة')}</button>
-          <button type="button" data-guess="fact">${t('Fact', 'حقيقة')}</button>
+          <button type="button" data-guess="myth">${t('Myth', 'Khorafa')}</button>
+          <button type="button" data-guess="fact">${t('Fact', '7a2ee2a')}</button>
         </div>
       </div>
       <div class="mf-face mf-back ${tp.fact ? 'is-fact' : 'is-myth'}">
-        <span class="mf-verdict">${tp.fact ? t('Fact ✓', 'حقيقة ✓') : t('Myth ✗', 'خرافة ✗')}</span>
+        <span class="mf-verdict">${tp.fact ? t('Fact ✓', '7a2ee2a ✓') : t('Myth ✗', 'Khorafa ✗')}</span>
         <p class="mf-result"></p>
         <p class="mf-why">${esc(tp.why)}</p>
-        <button type="button" class="mf-flip">${t('Flip back', 'اقلب تاني')}</button>
+        <button type="button" class="mf-flip">${t('Flip back', 'E2leb tany')}</button>
       </div>
     </div>
   </div>`).join('');
@@ -371,8 +382,8 @@ $$('.mf-card', mfGrid).forEach((card) => {
     if (card.classList.contains('answered')) { card.classList.add('flipped'); return; }
     const right = (b.dataset.guess === 'fact') === tp.fact;
     card.classList.add('answered', 'flipped', right ? 'got' : 'missed');
-    card.dataset.badge = right ? t('Got it ✓', 'صح ✓') : t('Missed', 'فاتتك');
-    $('.mf-result', card).textContent = right ? t('You got it! 🎉', 'صح عليك! 🎉') : t('Not quite — here’s the truth:', 'مش بالظبط — دي الحقيقة:');
+    card.dataset.badge = right ? t('Got it ✓', 'Sa7 ✓') : t('Missed', 'Fatetak');
+    $('.mf-result', card).textContent = right ? t('You got it! 🎉', 'Sa7 3aleek! 🎉') : t('Not quite — here’s the truth:', 'Msh bel zabt — di el 7a2ee2a:');
     $$('[data-guess]', card).forEach((x) => (x.disabled = true));
     b.classList.add('picked');
     if (right) { mfScore++; sfx.ding(); confettiFrom(card, { count: 24, spread: 0.6 }); } else sfx.buzz();
@@ -393,7 +404,7 @@ initQuiz($('#quiz'), CONFIG, { onPerfect: () => egg('perfect') });
 const zapper = initZapper($('#zap'), {
   onScore: (s, stats) => {
     if (s >= 25) egg('golden');
-    if (stats?.candies >= 5) { egg('candy'); rajiea?.say(t('I saw that 👀🍬', 'أنا شفت ده 👀🍬'), 3000); }
+    if (stats?.candies >= 5) { egg('candy'); rajiea?.say(t('I saw that 👀🍬', 'Ana shoft dah 👀🍬'), 3000); }
   },
 });
 const tabs = $$('[role="tab"]');
@@ -436,7 +447,7 @@ env.addEventListener('click', () => {
   const open = !env.classList.contains('open');
   env.classList.toggle('open', open);
   env.setAttribute('aria-expanded', String(open));
-  env.setAttribute('aria-label', open ? t('Close the letter', 'اقفل الجواب') : t('Open the letter', 'افتح الجواب'));
+  env.setAttribute('aria-label', open ? t('Close the letter', 'E2fel el gawab') : t('Open the letter', 'Efta7 el gawab'));
   if (open) {
     sfx.ding();
     if (!opened) setTimeout(() => confettiFrom(env, { count: 70, spread: 0.8 }), 450);
@@ -462,12 +473,12 @@ const spy = new IntersectionObserver((entries) => {
 
 // ── Easter eggs ──
 const WORDS = [
-  { id: 'name', re: /rajiea|راجيه|راجية/, run: () => { rajiea?.play('dance'); rajiea?.say(t('That’s me 💖', 'دي أنا 💖'), 2600); confetti({ x: innerWidth / 2, y: innerHeight / 3, count: 60, emoji: ['💖', '✨'] }); } },
-  { id: 'barca', re: /barca|barça|visca|برشلون|برسا/, run: () => { rajiea?.play('jump'); rajiea?.say(t('Visca Barça! 💙❤️', 'فيسكا برسا! 💙❤️'), 3000); confetti({ count: 140, colors: ['#004d98', '#a50044', '#edbb00', '#004d98', '#a50044'] }); confetti({ count: 20, emoji: ['⚽'] }); sfx.tada(); } },
-  { id: 'tamer', re: /tamer|تامر/, run: () => { rajiea?.play('dance'); rajiea?.say(t('Nagm El Geel 🎤', 'نجم الجيل 🎤'), 3000); confetti({ count: 50, emoji: ['🎤', '🎶', '⭐', '🎵'] }); sfx.party(); } },
-  { id: 'cafe', re: /matcha|cappuccino|cappucino|ماتشا|كابتشينو|كابوتشينو/, run: () => { rajiea?.play('matcha'); rajiea?.say(t('Matcha or cappuccino? Both ☕🍵', 'ماتشا ولا كابتشينو؟ الاتنين ☕🍵'), 3000); confetti({ x: innerWidth / 2, y: -20, count: 50, emoji: ['🍵', '☕'] }); } },
-  { id: 'sweet', re: /tiramisu|roz|rice pudding|تيراميسو|رز بلبن|رز باللبن/, run: () => { rajiea?.play('candy'); rajiea?.say(t('Okay… one bite 🙈', 'خلاص… حتة صغيرة بس 🙈'), 3000); confetti({ x: innerWidth / 2, y: -20, count: 50, emoji: ['🍰', '🍮'] }); } },
-  { id: 'tawouk', re: /tawouk|tawook|dahan|طاووق|الدهان|الدهّان/, run: () => { rajiea?.play('wave'); rajiea?.say(t('Is the order here yet? 😅', 'الأوردر لسه موصلش؟ 😅'), 3200); confetti({ x: innerWidth / 2, y: -20, count: 36, emoji: ['🥙', '🛵'] }); } },
+  { id: 'name', re: /rajiea|راجيه|راجية/, run: () => { rajiea?.play('dance'); rajiea?.say(t('That’s me 💖', 'Di ana 💖'), 2600); confetti({ x: innerWidth / 2, y: innerHeight / 3, count: 60, emoji: ['💖', '✨'] }); } },
+  { id: 'barca', re: /barca|barça|barsa|barshlona|visca|برشلون|برسا/, run: () => { rajiea?.play('jump'); rajiea?.say(t('Visca Barça! 💙❤️', 'Visca Barça! 💙❤️'), 3000); confetti({ count: 140, colors: ['#004d98', '#a50044', '#edbb00', '#004d98', '#a50044'] }); confetti({ count: 20, emoji: ['⚽'] }); sfx.tada(); } },
+  { id: 'tamer', re: /tamer|تامر/, run: () => { rajiea?.play('dance'); rajiea?.say(t('Nagm El Geel 🎤', 'Nagm el Geel 🎤'), 3000); confetti({ count: 50, emoji: ['🎤', '🎶', '⭐', '🎵'] }); sfx.party(); } },
+  { id: 'cafe', re: /matcha|macha|cappuccino|cappucino|kabtshino|ماتشا|كابتشينو|كابوتشينو/, run: () => { rajiea?.play('matcha'); rajiea?.say(t('Matcha or cappuccino? Both ☕🍵', 'Matcha walla cappuccino? El etneen ☕🍵'), 3000); confetti({ x: innerWidth / 2, y: -20, count: 50, emoji: ['🍵', '☕'] }); } },
+  { id: 'sweet', re: /tiramisu|roz|rice pudding|تيراميسو|رز بلبن|رز باللبن/, run: () => { rajiea?.play('candy'); rajiea?.say(t('Okay… one bite 🙈', 'Khalas… 7etta so8ayara bas 🙈'), 3000); confetti({ x: innerWidth / 2, y: -20, count: 50, emoji: ['🍰', '🍮'] }); } },
+  { id: 'tawouk', re: /tawouk|tawook|ta2ook|tawo2|dahan|طاووق|الدهان|الدهّان/, run: () => { rajiea?.play('wave'); rajiea?.say(t('Is the order here yet? 😅', 'El order lessa mawselsh? 😅'), 3200); confetti({ x: innerWidth / 2, y: -20, count: 36, emoji: ['🥙', '🛵'] }); } },
 ];
 const fired = new Set();
 function wordEggs(text, fromBox = false) {
@@ -484,14 +495,14 @@ function wordEggs(text, fromBox = false) {
 }
 // talk to her
 const REPLIES = [
-  { re: /^(hi|hey|hello|hiya|salam|اهلا|أهلا|هاي|هالو|السلام|سلام|ازيك|إزيك)/, move: 'wave', say: t('Hi! 👋 Happy you’re here.', 'أهلًا! 👋 نوّرت.') },
-  { re: /how are you|how r u|عاملة ايه|عامله ايه|اخبارك|أخبارك|ازيك/, move: 'jump', say: t('Smiling, as always 😁', 'بضحك، زي كل يوم 😁') },
-  { re: /love|cute|pretty|beautiful|حب|حلوة|جميلة|عسل|قمر/, move: 'blush', say: t('Aww, stop it 🙈💗', 'يا خبر… بطّل بقى 🙈💗') },
-  { re: /selfie|photo|picture|pic|صور|سيلفي/, move: 'selfie', say: t('Say cheese 📸', 'قول تشيز 📸') },
-  { re: /dance|party|ارقص|رقص|حفلة/, move: 'dance', say: t('Dance break 🎶', 'بريك رقص 🎶') },
-  { re: /candy|sugar|chocolate|sweet|حلويات|شوكولات|سكر|بونبون/, move: 'candy', say: t('Is that… sugar? 😱', 'ده… سكر؟ 😱') },
-  { re: /tooth|teeth|dentist|brush|floss|سنان|سنة|ضرس|دكتور|فرشة|خيط/, move: 'floss', say: t('Floss tonight. I’ll know. 😌', 'استخدم الخيط النهارده. هعرف. 😌') },
-  { re: /bye|good ?night|سلام|باي|تصبح|تصبحي/, move: 'wave', say: t('Bye! Brush before bed 🌙', 'باي! اغسل سنانك قبل ما تنام 🌙') },
+  { re: /^(hi|hey|hello|hiya|ahlan|ezay|izay|salam|اهلا|أهلا|هاي|هالو|السلام|سلام|ازيك|إزيك)/, move: 'wave', say: t('Hi! 👋 Happy you’re here.', 'Ahlan! 👋 Nawwart.') },
+  { re: /how are you|how r u|3amla eh|3amel eh|akhbarek|akhbarak|عاملة ايه|عامله ايه|اخبارك|أخبارك|ازيك/, move: 'jump', say: t('Smiling, as always 😁', 'Bad7ak, zay kol yom 😁') },
+  { re: /love|cute|pretty|beautiful|ba7eb|ba7ib|7elwa|amar|2amar|حب|حلوة|جميلة|عسل|قمر/, move: 'blush', say: t('Aww, stop it 🙈💗', 'Ya khabar… battal ba2a 🙈💗') },
+  { re: /selfie|photo|picture|pic|sowar|soura|صور|سيلفي/, move: 'selfie', say: t('Say cheese 📸', 'Ool cheese 📸') },
+  { re: /dance|party|er2os|ro2s|ارقص|رقص|حفلة/, move: 'dance', say: t('Dance break 🎶', 'Break ra2s 🎶') },
+  { re: /candy|sugar|chocolate|sweet|sokkar|7alawyat|shokolata|حلويات|شوكولات|سكر|بونبون/, move: 'candy', say: t('Is that… sugar? 😱', 'Dah… sokkar? 😱') },
+  { re: /tooth|teeth|dentist|brush|floss|snan|sena|ders|forsha|khet|سنان|سنة|ضرس|دكتور|فرشة|خيط/, move: 'floss', say: t('Floss tonight. I’ll know. 😌', 'Estakhdem el khet el naharda. Ha3raf. 😌') },
+  { re: /bye|good ?night|tesba7y|tesba7|سلام|باي|تصبح|تصبحي/, move: 'wave', say: t('Bye! Brush before bed 🌙', 'Bye! E8sel snanak 2abl ma tenam 🌙') },
 ];
 $('#chat').addEventListener('submit', (e) => {
   e.preventDefault();
@@ -556,7 +567,7 @@ soundBtn.addEventListener('click', () => {
     document.body.classList.add('party');
     sfx.party();
     rajiea?.play('dance');
-    rajiea?.say(t('Party mode 🪩', 'وضع الحفلة 🪩'), 3000);
+    rajiea?.say(t('Party mode 🪩', 'Party mode 🪩'), 3000);
     egg('dj');
     setTimeout(() => document.body.classList.remove('party'), 6500);
   }
@@ -566,20 +577,20 @@ soundBtn.addEventListener('click', () => {
 const hi = new URLSearchParams(location.search).get('hi');
 if (hi && rajiea) {
   const nameHi = hi.replace(/[^\p{L}\p{N} '-]/gu, '').slice(0, 24).trim();
-  if (nameHi) setTimeout(() => { rajiea.play('wave'); rajiea.say(t(`Hi ${nameHi}! Welcome 💖`, `أهلًا يا ${nameHi}! نوّرت 💖`), 4200); egg('friend'); }, 4200);
+  if (nameHi) setTimeout(() => { rajiea.play('wave'); rajiea.say(t(`Hi ${nameHi}! Welcome 💖`, `Ahlan ya ${nameHi}! Nawwart 💖`), 4200); egg('friend'); }, 4200);
 }
 
 // night owls and early birds
 const hour = new Date().getHours();
-if (hour < 5 && rajiea) setTimeout(() => { rajiea.say(t('It’s late — did you brush before bed? 🌙', 'الوقت اتأخر — غسلت سنانك قبل النوم؟ 🌙'), 4200); egg('night'); }, 8000);
-if (hour >= 5 && hour < 7 && rajiea) setTimeout(() => { rajiea.play('matcha'); rajiea.say(t('Up early! Matcha first? 🍵☀️', 'صاحي بدري! ماتشا الأول؟ 🍵☀️'), 4200); egg('early'); }, 8000);
+if (hour < 5 && rajiea) setTimeout(() => { rajiea.say(t('It’s late — did you brush before bed? 🌙', 'El wa2t et2akhar — 8asalt snanak 2abl el nom? 🌙'), 4200); egg('night'); }, 8000);
+if (hour >= 5 && hour < 7 && rajiea) setTimeout(() => { rajiea.play('matcha'); rajiea.say(t('Up early! Matcha first? 🍵☀️', 'Sa7y badry! Matcha el awel? 🍵☀️'), 4200); egg('early'); }, 8000);
 
 // developers
 console.log('%c🦷 Hi, curious one.', 'font: 600 18px Georgia, serif; color: #ff2e88');
 console.log('%cYou found the back room. Try typing  floss()  and press Enter.', 'color: #8a5a44; font-size: 13px');
 window.floss = () => {
   rajiea?.play('floss');
-  rajiea?.say(t('The floss dance 🪥', 'رقصة الخيط 🪥'), 3000);
+  rajiea?.say(t('The floss dance 🪥', 'Ra2set el khet 🪥'), 3000);
   egg('console');
   return '🪥 dentist approved';
 };

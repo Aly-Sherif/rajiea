@@ -44,14 +44,14 @@ export function openPad(source, render) {
   v.className = 'vault';
   v.setAttribute('role', 'dialog');
   v.setAttribute('aria-modal', 'true');
-  v.setAttribute('aria-label', t('Code', 'الكود'));
+  v.setAttribute('aria-label', t('Code', 'El code'));
   v.innerHTML = `
     <div class="vault-card">
-      <button type="button" class="vault-x" aria-label="${t('Close', 'إغلاق')}">×</button>
+      <button type="button" class="vault-x" aria-label="${t('Close', 'E2fel')}">×</button>
       <div class="vault-dots" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
       <div class="vault-keys" dir="ltr">
         ${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((d) => `<button type="button" data-d="${d}">${d}</button>`).join('')}
-        <span></span><button type="button" data-d="0">0</button><button type="button" data-del aria-label="${t('Delete', 'مسح')}">⌫</button>
+        <span></span><button type="button" data-d="0">0</button><button type="button" data-del aria-label="${t('Delete', 'Emsa7')}">⌫</button>
       </div>
     </div>`;
   document.body.appendChild(v);
@@ -84,7 +84,7 @@ export function openPad(source, render) {
       const text = await unseal(await boxReady, code);
       removeEventListener('keydown', onKey, true);
       card.classList.remove('working');
-      card.innerHTML = `<button type="button" class="vault-x" aria-label="${t('Close', 'إغلاق')}">×</button>`;
+      card.innerHTML = `<button type="button" class="vault-x" aria-label="${t('Close', 'E2fel')}">×</button>`;
       $('.vault-x', card).onclick = close;
       render({ text, card, close, overlay: v });
     } catch {

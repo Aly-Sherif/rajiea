@@ -57,9 +57,9 @@ export function initQuiz(root, cfg, hooks = {}) {
     root.innerHTML = `
       <div class="q-screen q-start">
         ${mascot()}
-        <h3>${t(`How well do you know ${esc(cfg.name)}?`, `قد إيه تعرف ${esc(cfg.nameAr)}؟`)}</h3>
-        <p>${t(`${n} random questions — a new set every time, with a few tough ones. Get ${pass} right to win a prize.`, `${n} أسئلة عشوائية — مجموعة جديدة كل مرة، وفيها كام سؤال صعب. جاوب ${pass} صح وتكسب جايزة.`)}</p>
-        <button type="button" class="btn btn-pink" data-go>${t('Start the quiz', 'يلا نبدأ')}</button>
+        <h3>${t(`How well do you know ${esc(cfg.name)}?`, `2ad eh te3raf ${esc(cfg.name)}?`)}</h3>
+        <p>${t(`${n} random questions — a new set every time, with a few tough ones. Get ${pass} right to win a prize.`, `${n} as2ela 3ashwa2eya — magmoo3a gdeeda kol marra, w feeha kam so2al sa3b. Gaweb ${pass} sa7 w teksab gayza.`)}</p>
+        <button type="button" class="btn btn-pink" data-go>${t('Start the quiz', 'Yalla nebda2')}</button>
       </div>`;
     root.querySelector('[data-go]').onclick = () => { sfx.click(); begin(); };
   }
@@ -68,14 +68,14 @@ export function initQuiz(root, cfg, hooks = {}) {
     const q = Q[i];
     root.innerHTML = `
       <div class="q-screen q-play">
-        <div class="q-top"><span>${t(`Question ${i + 1} of ${n}`, `سؤال ${i + 1} من ${n}`)}${q.hard ? ` <em class="q-hard">${t('Tough one', 'سؤال صعب')}</em>` : ''}</span><span class="q-stars">${t(`${score} correct`, `${score} صح`)}</span></div>
+        <div class="q-top"><span>${t(`Question ${i + 1} of ${n}`, `So2al ${i + 1} men ${n}`)}${q.hard ? ` <em class="q-hard">${t('Tough one', 'So2al sa3b')}</em>` : ''}</span><span class="q-stars">${t(`${score} correct`, `${score} sa7`)}</span></div>
         <div class="q-bar"><i style="width:${(i / n) * 100}%"></i></div>
         <div class="q-body">${mascot()}<h3 class="q-text">${esc(q.q)}</h3></div>
         <div class="q-options">
-          ${q.options.map((o, k) => `<button type="button" class="q-opt" data-k="${k}"><span class="q-letter">${t('ABCD', 'أبجد')[k]}</span><span>${esc(o)}</span></button>`).join('')}
+          ${q.options.map((o, k) => `<button type="button" class="q-opt" data-k="${k}"><span class="q-letter">${'ABCD'[k]}</span><span>${esc(o)}</span></button>`).join('')}
         </div>
         <p class="q-why" aria-live="polite"></p>
-        <button type="button" class="btn btn-pink q-next" hidden>${i + 1 < n ? t('Next question →', 'السؤال اللي بعده ←') : t('See my score →', 'شوف نتيجتي ←')}</button>
+        <button type="button" class="btn btn-pink q-next" hidden>${i + 1 < n ? t('Next question →', 'El so2al elly ba3do →') : t('See my score →', 'Shoof nateegty →')}</button>
       </div>`;
     setMood('idle');
     const opts = [...root.querySelectorAll('.q-opt')];
@@ -91,10 +91,10 @@ export function initQuiz(root, cfg, hooks = {}) {
     if (!right) opts[k].classList.add('wrong');
     if (right) { score++; sfx.ding(); confettiFrom(opts[k], { count: 14, spread: 0.45 }); } else sfx.buzz();
     setMood(right ? 'yay' : 'oops');
-    root.querySelector('.q-stars').textContent = t(`${score} correct`, `${score} صح`);
+    root.querySelector('.q-stars').textContent = t(`${score} correct`, `${score} sa7`);
     root.querySelector('.q-bar i').style.width = `${((i + 1) / n) * 100}%`;
     const why = root.querySelector('.q-why');
-    why.innerHTML = `<b>${right ? t('Correct.', 'صح.') : t('Not quite.', 'مش بالظبط.')}</b> ${esc(q.why || '')}`;
+    why.innerHTML = `<b>${right ? t('Correct.', 'Sa7.') : t('Not quite.', 'Msh bel zabt.')}</b> ${esc(q.why || '')}`;
     why.classList.add('show');
     const next = root.querySelector('.q-next');
     next.hidden = false;
@@ -108,9 +108,9 @@ export function initQuiz(root, cfg, hooks = {}) {
       root.innerHTML = `
         <div class="q-screen q-result">
           ${mascot()}
-          <h3>${t(`You scored ${score} / ${n}`, `نتيجتك ${score} / ${n}`)}</h3>
-          <p>${t(`Close! You need ${pass} to win. The next round brings a whole new set of questions.`, `قرّبت! محتاج ${pass} علشان تكسب. الجولة الجاية فيها أسئلة جديدة خالص.`)}</p>
-          <button type="button" class="btn btn-pink" data-again>${t('Try a new set', 'جرّب أسئلة جديدة')}</button>
+          <h3>${t(`You scored ${score} / ${n}`, `Nateegtak ${score} / ${n}`)}</h3>
+          <p>${t(`Close! You need ${pass} to win. The next round brings a whole new set of questions.`, `2arrabt! Me7tag ${pass} 3ashan teksab. El gawla el gaya feeha as2ela gdeeda khales.`)}</p>
+          <button type="button" class="btn btn-pink" data-again>${t('Try a new set', 'Garrab as2ela gdeeda')}</button>
         </div>`;
       setMood('oops');
       root.querySelector('[data-again]').onclick = () => { sfx.click(); begin(); };
@@ -119,8 +119,8 @@ export function initQuiz(root, cfg, hooks = {}) {
     const prize = cfg.prizes[Math.floor(Math.random() * cfg.prizes.length)];
     root.innerHTML = `
       <div class="q-screen q-result win">
-        <h3>${t(`You scored ${score} / ${n}`, `نتيجتك ${score} / ${n}`)}</h3>
-        <p>${score === n ? t('A perfect score — impressive.', 'الدرجة النهائية — برافو.') : t(`You really know ${esc(cfg.name)}.`, `إنت فعلًا تعرف ${esc(cfg.nameAr)}.`)} ${t('Scratch the card to reveal your prize.', 'اكشط الكارت علشان تشوف جايزتك.')}</p>
+        <h3>${t(`You scored ${score} / ${n}`, `Nateegtak ${score} / ${n}`)}</h3>
+        <p>${score === n ? t('A perfect score — impressive.', 'El daraga el nehaeya — bravo.') : t(`You really know ${esc(cfg.name)}.`, `Enta fe3lan te3raf ${esc(cfg.name)}.`)} ${t('Scratch the card to reveal your prize.', 'Ekshot el card 3ashan teshoof gayztak.')}</p>
         <div class="scratch">
           <div class="prize">
             <div class="prize-icon">${prize.icon}</div>
@@ -128,9 +128,9 @@ export function initQuiz(root, cfg, hooks = {}) {
             <div class="prize-note">${esc(prize.note)}</div>
             <div class="prize-claim">${esc(cfg.claimLine)}</div>
           </div>
-          <canvas class="scratch-cover" aria-label="${t('Scratch card — rub to reveal', 'كارت كشط — امسح علشان تشوف')}"></canvas>
+          <canvas class="scratch-cover" aria-label="${t('Scratch card — rub to reveal', 'Card kasht — emsa7 3ashan teshoof')}"></canvas>
         </div>
-        <button type="button" class="btn btn-cream" data-again>${t('Play a new set', 'العب بأسئلة جديدة')}</button>
+        <button type="button" class="btn btn-cream" data-again>${t('Play a new set', 'El3ab b as2ela gdeeda')}</button>
       </div>`;
     sfx.tada();
     confettiFrom(root.querySelector('h3'), { count: 80 });
@@ -159,10 +159,10 @@ function scratchCard(wrap) {
   for (let y = 12; y < h; y += 26) for (let x = (y / 26) % 2 ? 12 : 25; x < w; x += 26) { g.beginPath(); g.arc(x, y, 2.2, 0, Math.PI * 2); g.fill(); }
   g.fillStyle = '#fff';
   g.textAlign = 'center';
-  g.font = isAr ? '700 22px Tajawal, sans-serif' : '600 22px Fraunces, Georgia, serif';
-  g.fillText(t('Scratch here ✨', 'اكشط هنا ✨'), w / 2, h / 2 + 4);
-  g.font = isAr ? '500 14px Tajawal, sans-serif' : '600 13px Manrope, sans-serif';
-  g.fillText(t('use your finger or mouse', 'بصباعك أو بالماوس'), w / 2, h / 2 + 26);
+  g.font = '600 22px Fraunces, Georgia, serif';
+  g.fillText(t('Scratch here ✨', 'Ekshot hena ✨'), w / 2, h / 2 + 4);
+  g.font = '600 13px Manrope, sans-serif';
+  g.fillText(t('use your finger or mouse', 'B soba3ak aw bel mouse'), w / 2, h / 2 + 26);
   g.globalCompositeOperation = 'destination-out';
 
   let down = false, last = null, strokes = 0, done = false;
@@ -233,7 +233,7 @@ export function initZapper(root, hooks = {}) {
   $best.textContent = best;
 
   board.innerHTML = Array.from({ length: 9 }, (_, k) => `
-    <button type="button" class="cell" data-i="${k}" aria-label="${t(`Tooth ${k + 1}`, `سنة ${k + 1}`)}">
+    <button type="button" class="cell" data-i="${k}" aria-label="${t(`Tooth ${k + 1}`, `Sena ${k + 1}`)}">
       ${cellTooth}
       <span class="thing">${germSVG(k % 3 === 0 ? 280 : 100)}${candySVG}</span>
       <span class="burst" aria-hidden="true"></span>
@@ -246,9 +246,9 @@ export function initZapper(root, hooks = {}) {
   function intro() {
     overlay.innerHTML = `
       <div class="zo-card">
-        <h3>${t('Germ Zapper', 'صايد الجراثيم')}</h3>
-        <p>${t('Tap the <b>germs</b> before they cause cavities.<br>Leave the <b>candy</b> alone — tapping it costs 2 points.', 'دوس على <b>الجراثيم</b> قبل ما تعمل تسوّس.<br>وسيب <b>الحلويات</b> في حالها — لو دوست عليها تخسر نقطتين.')}</p>
-        <button type="button" class="btn btn-pink" data-play>${t(`Start · ${LEN} seconds`, `ابدأ · ${LEN} ثانية`)}</button>
+        <h3>${t('Germ Zapper', 'Sayed el garaseem')}</h3>
+        <p>${t('Tap the <b>germs</b> before they cause cavities.<br>Leave the <b>candy</b> alone — tapping it costs 2 points.', 'Dos 3ala <b>el garaseem</b> 2abl ma te3mel tasawos.<br>W seeb <b>el 7alawyat</b> f 7alha — law dost 3aleeha tekhsar no2teteen.')}</p>
+        <button type="button" class="btn btn-pink" data-play>${t(`Start · ${LEN} seconds`, `Ebda2 · ${LEN} sanya`)}</button>
       </div>`;
     overlay.hidden = false;
     overlay.querySelector('[data-play]').onclick = play;
@@ -339,18 +339,18 @@ export function initZapper(root, hooks = {}) {
     hooks.onScore?.(score, { candies, zapped, cavities });
     const newBest = score > best;
     if (newBest) { best = score; localStorage.setItem('rajiea-zap-best', best); $best.textContent = best; }
-    const rank = score >= 22 ? ['🏆', t('Certified Smile Guardian', 'حارس الابتسامة المعتمد'), t('Dr. Rajiea would hire you on the spot.', 'د. راجية هتعيّنك على طول.')]
-      : score >= 14 ? ['🦷', t('Great brushing!', 'غسيل ممتاز!'), t('The sugar bugs are scared of you now.', 'جراثيم السكر خايفة منك دلوقتي.')]
-      : score >= 7 ? ['🪥', t('Not bad!', 'مش وحش!'), t('A little more flossing and you’ll be unstoppable.', 'شوية خيط كمان ومحدش هيقدر يوقفك.')]
-      : ['🦠', t('The germs won this round', 'الجراثيم كسبت الجولة دي'), t('One more try?', 'محاولة كمان؟')];
+    const rank = score >= 22 ? ['🏆', t('Certified Smile Guardian', '7ares el ebtesama el mo3tamad'), t('Dr. Rajiea would hire you on the spot.', 'Dr. Rajiea hat3ayyenak 3ala tool.')]
+      : score >= 14 ? ['🦷', t('Great brushing!', '8aseel momtaz!'), t('The sugar bugs are scared of you now.', 'Garaseem el sokkar khayfa mennak dlwa2ty.')]
+      : score >= 7 ? ['🪥', t('Not bad!', 'Msh we7esh!'), t('A little more flossing and you’ll be unstoppable.', 'Shwayet khet kaman w ma7addesh hay2dar ywa22afak.')]
+      : ['🦠', t('The germs won this round', 'El garaseem kesbet el gawla di'), t('One more try?', 'Mo7awla kaman?')];
     overlay.innerHTML = `
       <div class="zo-card">
         <div class="zo-icon">${rank[0]}</div>
         <h3>${rank[1]}</h3>
-        <p class="zo-score">${t(`${score} points`, `${score} نقطة`)}${newBest ? ` · <b>${t('new best!', 'رقم قياسي جديد!')}</b>` : ''}</p>
+        <p class="zo-score">${t(`${score} points`, `${score} no2ta`)}${newBest ? ` · <b>${t('new best!', 'Record gdeed!')}</b>` : ''}</p>
         <p>${rank[2]}</p>
-        <ul class="zo-stats"><li><b>${zapped}</b> ${t('germs zapped', 'جرثومة اتصادت')}</li><li><b>${cavities}</b> ${t('cavities', 'تسوّس')}</li><li><b>${candies}</b> ${t('candies tapped', 'حلويات اتداست')}</li></ul>
-        <button type="button" class="btn btn-pink" data-play>${t('Play again', 'العب تاني')}</button>
+        <ul class="zo-stats"><li><b>${zapped}</b> ${t('germs zapped', 'garsooma etsadet')}</li><li><b>${cavities}</b> ${t('cavities', 'tasawos')}</li><li><b>${candies}</b> ${t('candies tapped', '7alawyat etdaset')}</li></ul>
+        <button type="button" class="btn btn-pink" data-play>${t('Play again', 'El3ab tany')}</button>
       </div>`;
     overlay.hidden = false;
     overlay.querySelector('[data-play]').onclick = play;
@@ -374,12 +374,12 @@ export function initZapper(root, hooks = {}) {
 const DAY = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
 export function initBrush(svg, ui, hooks = {}) {
-  const ZONES = isAr ? ['فوق شمال', 'فوق يمين', 'تحت يمين', 'تحت شمال'] : ['Top left', 'Top right', 'Bottom right', 'Bottom left'];
-  const STEPS = isAr ? ['الأسطح الخارجية', 'الأسطح الداخلية', 'أسطح المضغ'] : ['Outer surfaces', 'Inner surfaces', 'Chewing surfaces'];
+  const ZONES = isAr ? ['Foo2 shmal', 'Foo2 yemeen', 'Ta7t yemeen', 'Ta7t shmal'] : ['Top left', 'Top right', 'Bottom right', 'Bottom left'];
+  const STEPS = isAr ? ['El as-7o7 el khargeya', 'El as-7o7 el dakhleya', 'As-7o7 el mad8'] : ['Outer surfaces', 'Inner surfaces', 'Chewing surfaces'];
   const STEP_TIPS = isAr ? [
-    'ميّل الفرشة 45° ناحية اللثة واعمل دواير صغيرة وهادية.',
-    'دلوقتي من جوّه — خلّي الفرشة واقفة للسنان القدّامية.',
-    'حركات قصيرة لقدّام وورا على أسطح المضغ.',
+    'Mayyel el forsha 45° na7yet el lessa w e3mel dawayer so8ayara w hadya.',
+    'Dlwa2ty men gowwa — khally el forsha wa2fa lel snan el 2oddameya.',
+    '7arakat 2oseyyara le 2oddam w wara 3ala as-7o7 el mad8.',
   ] : [
     'Tilt the brush 45° toward the gumline and use small, gentle circles.',
     'Now the inside — hold the brush upright for the front teeth.',
@@ -479,18 +479,18 @@ export function initBrush(svg, ui, hooks = {}) {
     const today = new Date();
     const monday = new Date(today);
     monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
-    ui.week.innerHTML = (isAr ? ['ن', 'ث', 'ر', 'خ', 'ج', 'س', 'ح'] : ['M', 'T', 'W', 'T', 'F', 'S', 'S']).map((d, k) => {
+    ui.week.innerHTML = (isAr ? ['Et', 'Ta', 'Ar', 'Kh', 'Go', 'Sa', '7a'] : ['M', 'T', 'W', 'T', 'F', 'S', 'S']).map((d, k) => {
       const date = new Date(monday);
       date.setDate(monday.getDate() + k);
       const e = log[DAY(date)] || {};
       const isToday = DAY(date) === DAY(today);
-      return `<div class="wd${isToday ? ' today' : ''}"><span>${d}</span><i class="${e.am ? 'on' : ''}" title="${t('Morning', 'الصبح')}">☀️</i><i class="${e.pm ? 'on' : ''}" title="${t('Night', 'بالليل')}">🌙</i></div>`;
+      return `<div class="wd${isToday ? ' today' : ''}"><span>${d}</span><i class="${e.am ? 'on' : ''}" title="${t('Morning', 'El sob7')}">☀️</i><i class="${e.pm ? 'on' : ''}" title="${t('Night', 'Bel leil')}">🌙</i></div>`;
     }).join('');
     let streak = 0;
     const d = new Date(today);
     if (!log[DAY(d)]) d.setDate(d.getDate() - 1);
     while (log[DAY(d)]) { streak++; d.setDate(d.getDate() - 1); }
-    ui.streak.textContent = streak ? t(`${streak}-day streak — keep it going.`, `${streak} أيام ورا بعض — كمّل.`) : t('Finish a full 2 minutes to earn your first sticker.', 'كمّل دقيقتين كاملين علشان تاخد أول ستيكر.');
+    ui.streak.textContent = streak ? t(`${streak}-day streak — keep it going.`, `${streak} ayam wara ba3d — kammel.`) : t('Finish a full 2 minutes to earn your first sticker.', 'Kammel de2i2teen kamleen 3ashan takhod awel sticker.');
     return streak;
   }
   function award() {
@@ -533,7 +533,7 @@ export function initBrush(svg, ui, hooks = {}) {
       if (goneNow < Math.floor(shouldBeGone) && mine[0]) pop(mine[0]);
       const s = Math.min(2, Math.floor(zp * 3));
       if (z !== zone) {
-        if (zone >= 0) { sfx.ding(); zoneTeeth[zone].forEach((r, k) => { if (k % 2 === 0) { const m = r.getAttribute('transform').match(/translate\(([-\d.]+) ([-\d.]+)\)/); sparkleAt(m[1], m[2], k * 40); } }); coach(t(`Lovely. Now ${ZONES[z].toLowerCase()}.`, `حلو. دلوقتي ${ZONES[z]}.`)); }
+        if (zone >= 0) { sfx.ding(); zoneTeeth[zone].forEach((r, k) => { if (k % 2 === 0) { const m = r.getAttribute('transform').match(/translate\(([-\d.]+) ([-\d.]+)\)/); sparkleAt(m[1], m[2], k * 40); } }); coach(t(`Lovely. Now ${ZONES[z].toLowerCase()}.`, `7elw. Dlwa2ty ${ZONES[z]}.`)); }
         zone = z;
         step = -1;
       }
@@ -543,7 +543,7 @@ export function initBrush(svg, ui, hooks = {}) {
         ui.tip.textContent = STEP_TIPS[s];
         if (s > 0) sfx.key();
       }
-      if (!halfSaid && p >= 0.5) { halfSaid = true; coach(t('Halfway there ✨', 'نص الطريق ✨')); }
+      if (!halfSaid && p >= 0.5) { halfSaid = true; coach(t('Halfway there ✨', 'Nos el taree2 ✨')); }
     }
     const c = ZC[Math.max(0, z)];
     const t = performance.now() / 1000;
@@ -566,13 +566,13 @@ export function initBrush(svg, ui, hooks = {}) {
     germs.forEach((g) => pop(g));
     paint();
     ui.time.textContent = '0:00';
-    ui.zone.textContent = t('All done', 'خلصنا');
-    ui.tip.textContent = t('Spit, don’t rinse — the fluoride keeps working for a while.', 'اتف ومتتمضمضش — الفلورايد بيفضل شغّال شوية.');
-    ui.start.textContent = t('Brush again', 'اغسل تاني');
+    ui.zone.textContent = t('All done', 'Khalasna');
+    ui.tip.textContent = t('Spit, don’t rinse — the fluoride keeps working for a while.', 'Etf w matetmadmadsh — el fluoride byfdal sha88al shwaya.');
+    ui.start.textContent = t('Brush again', 'E8sel tany');
     sfx.tada();
     confettiFrom(svg, { count: 90 });
-    if (demo) coach(t('That was the quick demo. The real thing is 2 minutes.', 'ده كان الديمو السريع. الحقيقي دقيقتين.'));
-    else { const { slot, streak } = award(); coach(slot === 'am' ? t('Morning sticker earned ☀️', 'خدت ستيكر الصبح ☀️') : t('Night sticker earned 🌙', 'خدت ستيكر بالليل 🌙')); hooks.onComplete?.(streak); }
+    if (demo) coach(t('That was the quick demo. The real thing is 2 minutes.', 'Dah kan el demo el saree3. El 7a2ee2y de2i2teen.'));
+    else { const { slot, streak } = award(); coach(slot === 'am' ? t('Morning sticker earned ☀️', 'Khadt sticker el sob7 ☀️') : t('Night sticker earned 🌙', 'Khadt sticker bel leil 🌙')); hooks.onComplete?.(streak); }
   }
 
   function begin(isDemo) {
@@ -581,8 +581,8 @@ export function initBrush(svg, ui, hooks = {}) {
     elapsed = 0; zone = -1; step = -1; halfSaid = false;
     placeGerms();
     state = 'running';
-    ui.start.textContent = t('Pause', 'إيقاف');
-    coach(isDemo ? t('Quick demo — 5 seconds per zone.', 'ديمو سريع — 5 ثواني لكل منطقة.') : t('Let’s go. Start top left, outer surfaces.', 'يلا بينا. ابدأ فوق شمال، الأسطح الخارجية.'));
+    ui.start.textContent = t('Pause', 'Pause');
+    coach(isDemo ? t('Quick demo — 5 seconds per zone.', 'Demo saree3 — 5 sawany l kol mante2a.') : t('Let’s go. Start top left, outer surfaces.', 'Yalla beena. Ebda2 foo2 shmal, el as-7o7 el khargeya.'));
     sfx.click();
     last = performance.now();
     raf = requestAnimationFrame(loop);
@@ -591,15 +591,15 @@ export function initBrush(svg, ui, hooks = {}) {
   ui.start.addEventListener('click', () => {
     if (state === 'running') {
       state = 'paused';
-      ui.start.textContent = t('Resume', 'كمّل');
-      ui.zone.textContent = t('Paused', 'متوقف');
+      ui.start.textContent = t('Resume', 'Kammel');
+      ui.zone.textContent = t('Paused', 'Wa2ef');
       cancelAnimationFrame(raf);
       paint();
       return;
     }
     if (state === 'paused') {
       state = 'running';
-      ui.start.textContent = t('Pause', 'إيقاف');
+      ui.start.textContent = t('Pause', 'Pause');
       last = performance.now();
       raf = requestAnimationFrame(loop);
       return;
@@ -611,10 +611,10 @@ export function initBrush(svg, ui, hooks = {}) {
     cancelAnimationFrame(raf);
     state = 'idle'; elapsed = 0; zone = -1; step = -1;
     placeGerms();
-    ui.start.textContent = t('Start brushing', 'ابدأ الغسيل');
-    ui.zone.textContent = t('Ready when you are', 'جاهزين لما تكون جاهز');
+    ui.start.textContent = t('Start brushing', 'Ebda2 el 8aseel');
+    ui.zone.textContent = t('Ready when you are', 'Gahzeen lama tkoon gahez');
     ui.tip.textContent = STEP_TIPS[0];
-    coach(t('Two minutes, four zones. I’ll guide you.', 'دقيقتين، أربع مناطق. وأنا معاك خطوة بخطوة.'));
+    coach(t('Two minutes, four zones. I’ll guide you.', 'De2i2teen, arba3 manate2. W ana ma3ak khatwa b khatwa.'));
     sfx.click();
     paint();
   });

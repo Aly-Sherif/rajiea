@@ -1,11 +1,12 @@
-// English / Arabic. The choice is remembered; switching reloads the page in the other language.
+// English / Franco. The choice is remembered; switching reloads the page in the other language.
+// (Inside the code the Franco side is called "ar".)
 const KEY = 'rajiea-lang';
 let saved = 'en';
 try { saved = localStorage.getItem(KEY) === 'ar' ? 'ar' : 'en'; } catch {}
 export const lang = saved;
 export const isAr = lang === 'ar';
 
-// t('English', 'عربي') picks the right one
+// t('English', 'Franco') picks the right one
 export const t = (en, ar) => (isAr && ar != null ? ar : en);
 
 // turn { en, ar } pairs anywhere inside an object into plain text for the current language
@@ -21,16 +22,16 @@ export function localize(x) {
   return x;
 }
 
-// static page text: elements carry their Arabic in data-ar (and data-ar-html for markup)
+// static page text: elements carry their Franco in data-ar (and data-ar-html for markup)
 export function applyStatic(root = document) {
-  document.documentElement.lang = lang;
-  document.documentElement.dir = isAr ? 'rtl' : 'ltr';
+  document.documentElement.lang = isAr ? 'ar-Latn' : 'en';
+  document.documentElement.dir = 'ltr';
+  root.querySelectorAll('[data-lang-label]').forEach((el) => { el.textContent = isAr ? 'English' : '3arabi'; });
   if (!isAr) return;
   root.querySelectorAll('[data-ar]').forEach((el) => { el.textContent = el.dataset.ar; });
   root.querySelectorAll('[data-ar-html]').forEach((el) => { el.innerHTML = el.dataset.arHtml; });
   root.querySelectorAll('[data-ar-label]').forEach((el) => el.setAttribute('aria-label', el.dataset.arLabel));
   root.querySelectorAll('[data-ar-ph]').forEach((el) => el.setAttribute('placeholder', el.dataset.arPh));
-  root.querySelectorAll('[data-ar-lang]').forEach((el) => { el.lang = el.dataset.arLang; el.dir = el.dataset.arLang === 'ar' ? 'rtl' : 'ltr'; });
   const title = document.querySelector('meta[name="ar-title"]');
   if (title) document.title = title.content;
 }

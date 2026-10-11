@@ -404,7 +404,7 @@ function createStage(container, { dist = 10.4, camY = 2.05, lookY = 1.62, podium
   // loop — pauses when off-screen or when the tab is hidden
   const clock = new THREE.Clock();
   let running = false;
-  const vis = { inView: true, tab: !document.hidden };
+  const vis = { inView: true, tab: !document.hidden, free: true };
   function frame() {
     if (!running) return;
     const dt = Math.min(clock.getDelta(), 1 / 20);
@@ -417,12 +417,17 @@ function createStage(container, { dist = 10.4, camY = 2.05, lookY = 1.62, podium
     requestAnimationFrame(frame);
   }
   const sync = () => {
-    const want = vis.inView && vis.tab;
+    const want = vis.inView && vis.tab && vis.free;
     if (want && !running) { running = true; clock.getDelta(); requestAnimationFrame(frame); }
     else if (!want) running = false;
   };
   new IntersectionObserver(([e]) => { vis.inView = e.isIntersecting; sync(); }).observe(container);
   document.addEventListener('visibilitychange', () => { vis.tab = !document.hidden; sync(); });
+  // rest while a full-screen layer (code pad, story, deck…) is on top
+  new MutationObserver(() => {
+    const free = !document.querySelector('body > .vault, body > .secret, body > .inbox');
+    if (free !== vis.free) { vis.free = free; sync(); }
+  }).observe(document.body, { childList: true });
   stage.start = sync;
   return stage;
 }

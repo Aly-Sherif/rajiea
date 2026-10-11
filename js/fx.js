@@ -58,21 +58,40 @@ export const sfx = {
 };
 
 // ── Confetti ──
+// Time-based (same speed on every phone), short-lived, capped, and emoji are drawn
+// once into little images so hundreds of them stay smooth.
 const canvas = document.getElementById('fx');
 const g = canvas?.getContext('2d');
 let pieces = [];
-let rafId = 0;
-const COLORS = ['#ff3d8b', '#ff9cc4', '#f6e7d6', '#9a6b4d', '#ffffff', '#e4b35e', '#5b3a26'];
+let rafId = 0, last = 0;
+const MAX = 260;
+const COLORS = ['#ff2e88', '#ff9cc4', '#f6e7d6', '#9a6b4d', '#ffffff', '#e4b35e', '#4a2c20'];
+const sprites = new Map();
 
 function sizeCanvas() {
   if (!canvas) return;
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  canvas.width = innerWidth * dpr;
-  canvas.height = innerHeight * dpr;
+  const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+  canvas.width = Math.round(innerWidth * dpr);
+  canvas.height = Math.round(innerHeight * dpr);
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 addEventListener('resize', sizeCanvas);
 sizeCanvas();
+document.addEventListener('visibilitychange', () => { if (document.hidden) { pieces = []; g?.clearRect(0, 0, innerWidth, innerHeight); } });
+
+function sprite(text) {
+  if (sprites.has(text)) return sprites.get(text);
+  const S = 64;
+  const c = document.createElement('canvas');
+  c.width = c.height = S;
+  const cg = c.getContext('2d');
+  cg.font = `${S * 0.78}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
+  cg.textAlign = 'center';
+  cg.textBaseline = 'middle';
+  cg.fillText(text, S / 2, S / 2 + S * 0.04);
+  sprites.set(text, c);
+  return c;
+}
 
 function heart(x, y, s) {
   g.beginPath();
@@ -84,49 +103,63 @@ function heart(x, y, s) {
   g.fill();
 }
 
-function tick() {
+function tick(now) {
+  const dt = Math.min(0.05, (now - last) / 1000 || 0.016);
+  last = now;
   g.clearRect(0, 0, innerWidth, innerHeight);
-  pieces = pieces.filter((p) => p.life > 0 && p.y < innerHeight + 40);
+  pieces = pieces.filter((p) => p.age < p.life && p.y < innerHeight + 60);
   for (const p of pieces) {
-    p.vy += 0.16;
-    p.vx *= 0.99;
-    p.x += p.vx;
-    p.y += p.vy;
-    p.rot += p.vr;
-    p.life -= 1;
-    g.save();
-    g.globalAlpha = Math.min(1, p.life / 40);
-    g.fillStyle = p.color;
-    g.translate(p.x, p.y);
-    g.rotate(p.rot);
-    if (p.shape === 'emoji') { g.font = `${p.size * 2}px serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(p.text, 0, 0); }
-    else if (p.shape === 'heart') heart(0, -p.size / 2, p.size);
-    else if (p.shape === 'dot') { g.beginPath(); g.arc(0, 0, p.size / 2.4, 0, Math.PI * 2); g.fill(); }
-    else g.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2);
-    g.restore();
+    p.age += dt;
+    p.vy += 900 * dt;
+    p.vx *= Math.pow(0.4, dt);
+    p.vy *= Math.pow(0.7, dt);
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.rot += p.vr * dt;
+    const fade = Math.min(1, (p.life - p.age) / 0.45);
+    g.globalAlpha = Math.max(0, fade);
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    const dpr = canvas.width / innerWidth;
+    g.setTransform(dpr * Math.cos(p.rot), dpr * Math.sin(p.rot), -dpr * Math.sin(p.rot), dpr * Math.cos(p.rot), p.x * dpr, p.y * dpr);
+    if (p.img) { const s = p.size * 2.2; g.drawImage(p.img, -s / 2, -s / 2, s, s); }
+    else {
+      g.fillStyle = p.color;
+      if (p.shape === 'heart') heart(0, -p.size / 2, p.size);
+      else if (p.shape === 'dot') { g.beginPath(); g.arc(0, 0, p.size / 2.4, 0, Math.PI * 2); g.fill(); }
+      else g.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2);
+    }
   }
+  g.globalAlpha = 1;
+  const dpr = canvas.width / innerWidth;
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
   rafId = pieces.length ? requestAnimationFrame(tick) : 0;
+  if (!rafId) g.clearRect(0, 0, innerWidth, innerHeight);
 }
 
 export function confetti({ x = innerWidth / 2, y = innerHeight / 2, count = 120, spread = 1, emoji = null, colors = null } = {}) {
   if (!g || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  for (let i = 0; i < count; i++) {
+  const room = MAX - pieces.length;
+  const n = Math.min(count, Math.max(0, room), emoji ? 60 : MAX);
+  const pal = colors || COLORS;
+  for (let i = 0; i < n; i++) {
     const a = Math.random() * Math.PI * 2;
-    const v = (3 + Math.random() * 7) * spread;
+    const v = (180 + Math.random() * 420) * spread;
+    const text = emoji ? emoji[(Math.random() * emoji.length) | 0] : '';
     pieces.push({
       x, y,
       vx: Math.cos(a) * v,
-      vy: Math.sin(a) * v - 6,
+      vy: Math.sin(a) * v - 360,
       rot: Math.random() * 6,
-      vr: (Math.random() - 0.5) * 0.3,
+      vr: (Math.random() - 0.5) * 8,
       size: 7 + Math.random() * 8,
-      color: (colors || COLORS)[(Math.random() * (colors || COLORS).length) | 0],
-      shape: emoji ? 'emoji' : Math.random() < 0.22 ? 'heart' : Math.random() < 0.5 ? 'dot' : 'rect',
-      text: emoji ? emoji[(Math.random() * emoji.length) | 0] : '',
-      life: 140 + Math.random() * 60,
+      color: pal[(Math.random() * pal.length) | 0],
+      shape: Math.random() < 0.22 ? 'heart' : Math.random() < 0.5 ? 'dot' : 'rect',
+      img: text ? sprite(text) : null,
+      age: 0,
+      life: 1.5 + Math.random() * 0.9,
     });
   }
-  if (!rafId) rafId = requestAnimationFrame(tick);
+  if (!rafId) { last = performance.now(); rafId = requestAnimationFrame(tick); }
 }
 
 export function confettiFrom(el, opts) {

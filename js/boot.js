@@ -2,7 +2,7 @@
 // parts are stored encrypted in assets/c.txt and only open with the right code.
 // Once opened on a device, it stays open there.
 import { CONFIG } from './config.js';
-import { localize, applyStatic, t, restoreScroll } from './i18n.js';
+import { localize, applyStatic, t, restoreScroll, switchLang } from './i18n.js';
 import { b64, toB64, openBox } from './vault.js';
 
 const STORE = 'rajiea-pass';
@@ -47,11 +47,20 @@ function gate() {
   g.hidden = false;
   const hi = new URLSearchParams(location.search).get('hi');
   const nameHi = hi ? hi.replace(/[^\p{L}\p{N} '-]/gu, '').slice(0, 24).trim() : '';
-  if (nameHi) $('#gateHi').textContent = t(`Hi ${nameHi} 👋`, `أهلًا يا ${nameHi} 👋`);
+  if (nameHi) $('#gateHi').textContent = t(`Hi ${nameHi} 👋`, `Ahlan ya ${nameHi} 👋`);
+  $('[data-lang]', g)?.addEventListener('click', switchLang);
+  // ask for the code: WhatsApp opens with the message ready — they just pick Rajiea's chat
+  const ask = $('#gateAsk');
+  const askText = t(
+    `Hi Rajiea 💗${nameHi ? ` It’s ${nameHi}.` : ''} Could I have the code for rajiea.com? 🙈`,
+    `Hi Rajiea 💗${nameHi ? ` Ana ${nameHi}.` : ''} Momken el code bta3 rajiea.com? 🙈`,
+  );
+  ask.href = `https://wa.me/?text=${encodeURIComponent(askText)}`;
+  ask.addEventListener('click', () => { $('#gateMsg').textContent = t('Pick Rajiea’s chat and hit send 💌', 'Ekhtar chat Rajiea w dos send 💌'); });
   const clock = () => {
     const d = new Date();
-    $('#gateTime').textContent = d.toLocaleTimeString(t('en-GB', 'ar-EG'), { hour: 'numeric', minute: '2-digit' });
-    $('#gateDate').textContent = d.toLocaleDateString(t('en-GB', 'ar-EG'), { weekday: 'long', day: 'numeric', month: 'long' });
+    $('#gateTime').textContent = d.toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit' });
+    $('#gateDate').textContent = d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
   };
   clock();
   const clockId = setInterval(clock, 15000);
@@ -74,23 +83,31 @@ function gate() {
       clearInterval(clockId);
       removeEventListener('keydown', onKey);
       pad.classList.remove('working');
-      g.classList.add('open');
-      root.classList.add('known');
-      setTimeout(() => { g.remove(); }, 1300);
-      start(data);
+      pad.classList.add('yes');
+      setTimeout(() => {
+        g.classList.add('open');
+        root.classList.add('known');
+      }, 260);
+      // build the site once the door has opened, so the opening stays smooth
+      setTimeout(() => { g.remove(); start(data); }, 1450);
     } catch {
       pad.classList.remove('working', 'shake');
       void pad.offsetWidth;
       pad.classList.add('shake');
       if (navigator.userActivation?.isActive) navigator.vibrate?.([30, 40, 30]);
-      msg.textContent = t('Not quite — try again', 'مش ده — جرّب تاني');
+      msg.textContent = t('Not quite — try again', 'La2 msh dah — garrab tany');
       setTimeout(() => { code = ''; paint(); busy = false; }, 500);
     }
   };
   $$('[data-k]', g).forEach((b) => b.addEventListener('click', () => press(b.dataset.k)));
   $('[data-kdel]', g).addEventListener('click', () => { if (!busy) { code = code.slice(0, -1); paint(); } });
   const onKey = (e) => {
-    if (/^\d$/.test(e.key)) press(e.key);
+    if (/^\d$/.test(e.key)) {
+      const b = $(`[data-k="${e.key}"]`, g);
+      b?.classList.add('hit');
+      setTimeout(() => b?.classList.remove('hit'), 140);
+      press(e.key);
+    }
     else if (e.key === 'Backspace' && !busy) { code = code.slice(0, -1); paint(); }
   };
   addEventListener('keydown', onKey);

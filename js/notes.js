@@ -55,12 +55,12 @@ export function initNotes(root, hooks = {}) {
     e.preventDefault();
     if (sending) return;
     const text = msg.value.trim();
-    if (!text) { say(t('Write something first ✍️', 'اكتب حاجة الأول ✍️'), 'warn'); msg.focus(); return; }
+    if (!text) { say(t('Write something first ✍️', 'Ekteb 7aga el awel ✍️'), 'warn'); msg.focus(); return; }
     let sent = [];
     try { sent = JSON.parse(localStorage.getItem(LIMIT) || '[]').filter((x) => Date.now() - x < 3600e3); } catch {}
-    if (sent.length >= 5) { say(t('That’s a lot of love for one hour — try again later 💕', 'ده حب كتير في ساعة واحدة — جرّب بعدين 💕'), 'warn'); return; }
+    if (sent.length >= 5) { say(t('That’s a lot of love for one hour — try again later 💕', 'Dah 7ob keteer f sa3a wa7da — garrab ba3deen 💕'), 'warn'); return; }
     sending = true;
-    say(t('Sealing and sending…', 'بنقفلها ونبعتها…'));
+    say(t('Sealing and sending…', 'Ben2felha w neb3atha…'));
     try {
       const body = await seal({ n: from.value.trim().slice(0, 40), m: text.slice(0, 600), s: form.elements.sticker.value, l: isAr ? 'ar' : 'en' }, cfg.pub);
       const r = await api(cfg, 'rajiea_notes', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(body) });
@@ -79,10 +79,10 @@ export function initNotes(root, hooks = {}) {
         setTimeout(() => paper.classList.remove('back'), 600);
       }, 1100);
       confettiFrom(paper, { count: 40, spread: 0.7, emoji: ['💌', '✨', '💖'] });
-      say(t('Sent! Only she can read it 💌', 'اتبعتت! هي بس اللي تقدر تقراها 💌'), 'ok');
+      say(t('Sent! Only she can read it 💌', 'Etba3atet! Heya bas elly te2dar te2raha 💌'), 'ok');
       hooks.onSent?.();
     } catch {
-      say(t('Couldn’t send — try again in a bit.', 'مقدرناش نبعتها — جرّب كمان شوية.'), 'warn');
+      say(t('Couldn’t send — try again in a bit.', 'Ma2dernash neb3atha — garrab kaman shwaya.'), 'warn');
       sfx.buzz();
     } finally {
       sending = false;
@@ -106,8 +106,8 @@ function showInbox(cfg, priv) {
   o.setAttribute('aria-modal', 'true');
   o.innerHTML = `
     <div class="inbox-panel">
-      <header><h3>${t('Your notes 💌', 'رسايلك 💌')}</h3><button type="button" class="inbox-x" aria-label="${t('Close', 'إغلاق')}">×</button></header>
-      <div class="inbox-list"><p class="inbox-empty">${t('Opening…', 'بنفتحها…')}</p></div>
+      <header><h3>${t('Your notes 💌', 'Rasayelek 💌')}</h3><button type="button" class="inbox-x" aria-label="${t('Close', 'E2fel')}">×</button></header>
+      <div class="inbox-list"><p class="inbox-empty">${t('Opening…', 'Benefta7ha…')}</p></div>
     </div>`;
   document.body.appendChild(o);
   document.documentElement.classList.add('story-open');
@@ -126,17 +126,17 @@ function showInbox(cfg, priv) {
       if (!r.ok) throw new Error(String(r.status));
       const rows = await r.json();
       const notes = (await Promise.all(rows.map(async (row) => { try { return { ...(await unsealNote(row, priv)), at: row.created_at }; } catch { return null; } }))).filter(Boolean);
-      if (!notes.length) { list.innerHTML = `<p class="inbox-empty">${t('No notes yet. Share the link with your friends 💌', 'لسه مفيش رسايل. ابعتي اللينك لصحابك 💌')}</p>`; return; }
-      const fmt = new Intl.DateTimeFormat(isAr ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+      if (!notes.length) { list.innerHTML = `<p class="inbox-empty">${t('No notes yet. Share the link with your friends 💌', 'Lessa mafeesh rasayel. Eb3aty el link l so7abek 💌')}</p>`; return; }
+      const fmt = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
       list.innerHTML = notes.map((n, i) => `
         <article class="inbox-note" style="--i:${i};--r:${((i * 37) % 9) - 4}deg">
           <span class="in-sticker">${esc(n.s || '💌')}</span>
           <p dir="auto">${esc(n.m)}</p>
-          <footer><b dir="auto">${esc(n.n || t('Someone sweet', 'حد لطيف'))}</b><time>${fmt.format(new Date(n.at))}</time></footer>
+          <footer><b dir="auto">${esc(n.n || t('Someone sweet', '7add lateef'))}</b><time>${fmt.format(new Date(n.at))}</time></footer>
         </article>`).join('');
       sfx.tada();
     } catch {
-      list.innerHTML = `<p class="inbox-empty">${t('Couldn’t load the notes right now. Try again in a bit.', 'مقدرناش نجيب الرسايل دلوقتي. جرّبي كمان شوية.')}</p>`;
+      list.innerHTML = `<p class="inbox-empty">${t('Couldn’t load the notes right now. Try again in a bit.', 'Ma2dernash ngeeb el rasayel dlwa2ty. Garraby kaman shwaya.')}</p>`;
     }
   })();
 }

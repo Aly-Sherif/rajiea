@@ -1,13 +1,16 @@
 import { CONFIG } from './config.js';
-import { sfx, confetti, confettiFrom, sparkleTrail } from './fx.js';
+import { sfx, confetti, confettiFrom, startMusic } from './fx.js';
 import { initQuiz, initZapper, initBrush } from './games.js';
 import { egg } from './eggs.js';
 import { openPad } from './vault.js';
+import { t, isAr, switchLang } from './i18n.js';
+import { initNotes } from './notes.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const fine = matchMedia('(pointer: fine)').matches;
 const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const esc = (x) => String(x).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 // ── Title letters & rotating tagline ──
 const titleEn = $('#titleEn');
@@ -17,38 +20,94 @@ $$('.ch', titleEn).forEach((el) => el.addEventListener('pointerenter', () => {
   void el.offsetWidth;
   el.classList.add('jig');
 }));
-
 const rotator = $('#rotator');
+rotator.textContent = CONFIG.taglines[0];
 let tagIndex = 0;
 setInterval(() => {
+  if (document.hidden) return;
   tagIndex = (tagIndex + 1) % CONFIG.taglines.length;
   rotator.classList.add('out');
   setTimeout(() => {
     rotator.textContent = CONFIG.taglines[tagIndex];
     rotator.classList.remove('out');
   }, 320);
-}, 2600);
+}, 2800);
 
-// ── Sound toggle ──
+// ── Sound & language ──
 const soundBtn = $('#soundBtn');
 const paintSound = () => {
-  soundBtn.textContent = sfx.muted ? '🔇' : '🔊';
-  soundBtn.setAttribute('aria-label', sfx.muted ? 'Turn sound on' : 'Turn sound off');
+  soundBtn.classList.toggle('off', sfx.muted);
+  soundBtn.setAttribute('aria-label', sfx.muted ? t('Turn sound on', 'شغّل الصوت') : t('Turn sound off', 'اقفل الصوت'));
 };
-soundBtn.addEventListener('click', () => { sfx.toggle(); paintSound(); });
+soundBtn.addEventListener('click', () => {
+  sfx.toggle();
+  paintSound();
+});
 paintSound();
+$('#langBtn').addEventListener('click', () => { sfx.click(); switchLang(); });
+
+// ── Scroll progress, custom cursor, magnetic buttons ──
+const bar = $('#progress');
+let barQueued = false;
+const paintBar = () => {
+  barQueued = false;
+  const max = document.documentElement.scrollHeight - innerHeight;
+  bar.style.transform = `scaleX(${max > 0 ? scrollY / max : 0})`;
+};
+addEventListener('scroll', () => { if (!barQueued) { barQueued = true; requestAnimationFrame(paintBar); } }, { passive: true });
+
+if (fine && !calm) {
+  const dot = $('#cursorDot'), ring = $('#cursorRing');
+  document.body.classList.add('has-cursor');
+  let mx = innerWidth / 2, my = innerHeight / 2, rx = mx, ry = my, live = false;
+  addEventListener('pointermove', (e) => {
+    mx = e.clientX; my = e.clientY;
+    dot.style.transform = `translate(${mx}px, ${my}px)`;
+    if (!live) { live = true; requestAnimationFrame(follow); }
+    const hot = e.target.closest?.('a, button, [role="tab"], .fav, .q-opt, canvas, .cell, input, textarea, label');
+    ring.classList.toggle('hot', !!hot);
+  }, { passive: true });
+  addEventListener('pointerdown', () => ring.classList.add('press'));
+  addEventListener('pointerup', () => ring.classList.remove('press'));
+  document.addEventListener('pointerleave', () => document.body.classList.add('cursor-away'));
+  document.addEventListener('pointerenter', () => document.body.classList.remove('cursor-away'));
+  function follow() {
+    rx += (mx - rx) * 0.2;
+    ry += (my - ry) * 0.2;
+    ring.style.transform = `translate(${rx}px, ${ry}px)`;
+    if (Math.abs(mx - rx) + Math.abs(my - ry) > 0.3) requestAnimationFrame(follow);
+    else live = false;
+  }
+  $$('.magnet').forEach((b) => {
+    b.addEventListener('pointermove', (e) => {
+      const r = b.getBoundingClientRect();
+      b.style.transform = `translate(${((e.clientX - r.left) / r.width - 0.5) * 12}px, ${((e.clientY - r.top) / r.height - 0.5) * 10}px)`;
+    });
+    b.addEventListener('pointerleave', () => { b.style.transform = ''; });
+  });
+}
+
+// ── Orbit chips around the stage (her favourites) ──
+$('#orbit').innerHTML = CONFIG.favourites.slice(0, 6).map((f, i) => `<span class="orb o${i}" style="--i:${i}"><i>${f.icon}</i>${esc(f.title)}</span>`).join('');
 
 // ── 3D Rajiea + Little Rajiea ──
 const hideLoader = () => {
   const l = $('#loader');
   if (!l || l.classList.contains('done')) return;
   l.classList.add('done');
-  setTimeout(() => l.remove(), 700);
+  setTimeout(() => l.remove(), 800);
   document.body.classList.add('ready');
 };
-setTimeout(hideLoader, 5000);
+setTimeout(hideLoader, 6000);
 
 let rajiea = null;
+const LINES = {
+  wave: t('Hi there 👋', 'أهلًا 👋'), jump: t('Whee!', 'ييييه!'), spin: t('Ta-da ✨', 'تادا ✨'), dance: t('Dance break 🎶', 'بريك رقص 🎶'), wink: '😉',
+  floss: t('The floss dance — dentist approved 🪥', 'رقصة الخيط — بموافقة الدكتورة 🪥'), candy: t('Is that… sugar? 😱', 'ده… سكر؟ 😱'), sneeze: t('Achoo! Excuse me 🤧', 'هاتشو! آسفة 🤧'),
+  selfie: t('Say cheese 📸', 'قول تشيز 📸'), matcha: t('Matcha o’clock 🍵', 'وقت الماتشا 🍵'),
+};
+const OUTFIT_LINES = { clinic: t('Back to the clinic 🦷', 'راجعة العيادة 🦷'), city: t('City day! 📱', 'يوم خروج! 📱'), cozy: t('Cozy mode ☁️', 'وضع الراحة ☁️') };
+
 try {
   const { createRajiea, createLittleRajiea, OUTFITS } = await import('./character.js');
   rajiea = createRajiea($('#stage'), { bubble: $('#bubble'), lines: CONFIG.bubbleLines, badge: `Dr. ${CONFIG.name}` });
@@ -57,30 +116,96 @@ try {
   rajiea.onPoke = () => {
     sfx.boop();
     const now = performance.now();
-    pokes = [...pokes.filter((t) => now - t < 4000), now];
+    pokes = [...pokes.filter((x) => now - x < 4000), now];
     if (pokes.length >= 7) {
       pokes = [];
-      setTimeout(() => { rajiea.play('dizzy'); rajiea.say('Okay, okay — I’m ticklish 😂', 2800); egg('tickle'); }, 300);
+      setTimeout(() => { rajiea.play('dizzy'); rajiea.say(t('Okay, okay — I’m ticklish 😂', 'خلاص خلاص — أنا بتزغزغ 😂'), 2800); egg('tickle'); }, 300);
     }
   };
-  rajiea.onHold = () => { rajiea.play('blush'); rajiea.say('Hehe, stop it 🙈', 2400); sfx.giggle(); egg('hold'); };
+  rajiea.onHold = () => { rajiea.play('blush'); rajiea.say(t('Hehe, stop it 🙈', 'هيهي، بطّل بقى 🙈'), 2400); sfx.giggle(); egg('hold'); };
+  rajiea.onSpin = () => { rajiea.play('dizzy'); rajiea.say(t('Woah… the room is spinning 😵‍💫', 'إيه ده… الدنيا بتلف 😵‍💫'), 2600); sfx.whoosh(); egg('spinner'); };
 
-  const MOVE_LINES = { wave: 'Hi there 👋', jump: 'Whee!', spin: 'Ta-da ✨', dance: 'Dance break 🎶', wink: '😉', floss: 'The floss dance — dentist approved 🪥', candy: 'Is that… sugar? 😱', sneeze: 'Achoo! Excuse me 🤧' };
+  // selfies come out as polaroids
+  let selfies = 0;
+  const stageEl = $('#stage');
+  rajiea.onSnap = () => {
+    sfx.shutter();
+    stageEl.classList.remove('flash');
+    void stageEl.offsetWidth;
+    stageEl.classList.add('flash');
+    const src = rajiea.snap();
+    const img = new Image();
+    img.onload = () => {
+      const cv = document.createElement('canvas');
+      const S = 520;
+      cv.width = S; cv.height = S;
+      const g = cv.getContext('2d');
+      const grd = g.createLinearGradient(0, 0, S, S);
+      grd.addColorStop(0, '#ffe1ee'); grd.addColorStop(1, '#f7e6d6');
+      g.fillStyle = grd;
+      g.fillRect(0, 0, S, S);
+      const k = Math.max(S / img.width, S / img.height) * 1.45;
+      const w = img.width * k, h = img.height * k;
+      g.drawImage(img, (S - w) / 2, -h * 0.02, w, h);
+      const url = cv.toDataURL('image/jpeg', 0.9);
+      const day = new Date().toLocaleDateString(isAr ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+      const p = document.createElement('a');
+      p.className = 'polaroid';
+      p.href = url;
+      p.download = 'rajiea-selfie.jpg';
+      p.style.setProperty('--r', `${(Math.random() - 0.5) * 18}deg`);
+      p.style.setProperty('--x', `${(Math.random() - 0.5) * 30}px`);
+      p.innerHTML = `<img src="${url}" alt="${t('A selfie with Rajiea', 'سيلفي مع راجية')}"><span>${t('Rajiea', 'راجية')} · ${day}</span>`;
+      p.title = t('Tap to save', 'دوس علشان تحفظها');
+      stageEl.appendChild(p);
+      const all = $$('.polaroid', stageEl);
+      if (all.length > 3) all[0].remove();
+      setTimeout(() => p.classList.add('gone'), 7000);
+      setTimeout(() => p.remove(), 7800);
+    };
+    img.src = src;
+    if (++selfies >= 3) egg('selfie');
+  };
+
+  const tried = new Set();
   $$('[data-move]').forEach((b) => b.addEventListener('click', () => {
-    rajiea.play(b.dataset.move);
-    rajiea.say(MOVE_LINES[b.dataset.move]);
+    const m = b.dataset.move;
+    rajiea.play(m);
+    rajiea.say(LINES[m]);
     sfx.boop();
+    tried.add(m);
+    if (tried.size >= $$('[data-move]').length) egg('moves');
   }));
 
   const swatches = $$('[data-hijab]');
   const markSwatch = (hex) => swatches.forEach((s) => s.setAttribute('aria-checked', String(s.dataset.hijab.toLowerCase() === hex.toLowerCase())));
+  const colours = new Set();
+  let pinkTaps = 0, pinkTimer = 0;
   swatches.forEach((s) => s.addEventListener('click', () => {
     rajiea.setHijab(s.dataset.hijab);
     markSwatch(s.dataset.hijab);
     sfx.click();
+    colours.add(s.dataset.hijab);
+    if (colours.size >= swatches.length) egg('stylist');
+    if (s.dataset.hijab === '#ff6fa8') {
+      pinkTaps++;
+      clearTimeout(pinkTimer);
+      pinkTimer = setTimeout(() => (pinkTaps = 0), 1800);
+      if (pinkTaps >= 3) {
+        pinkTaps = 0;
+        rajiea.setHijab('#ff1f8f');
+        document.body.classList.add('hotpink');
+        rajiea.play('dance');
+        rajiea.say(t('HOT PINK. Always. 💗', 'هوت بينك. دايمًا 💗'), 3000);
+        confetti({ x: innerWidth / 2, y: innerHeight / 3, count: 90, emoji: ['💗', '💖', '🩷'] });
+        sfx.tada();
+        egg('hotpink');
+        setTimeout(() => document.body.classList.remove('hotpink'), 9000);
+      }
+    }
   }));
 
-  const OUTFIT_LINES = { clinic: 'Back to the clinic 🦷', city: 'City day! 📱', cozy: 'Cozy mode ☁️' };
+  const outfitsTried = new Set();
   $$('[data-outfit]').forEach((b) => b.addEventListener('click', () => {
     const name = b.dataset.outfit;
     rajiea.setOutfit(name);
@@ -89,29 +214,38 @@ try {
     rajiea.play('jump');
     rajiea.say(OUTFIT_LINES[name]);
     sfx.pop();
+    outfitsTried.add(name);
+    if (outfitsTried.size >= 3) egg('wardrobe');
   }));
 
   const zoomBtn = $('#zoomBtn');
-  zoomBtn.addEventListener('click', () => {
-    const on = rajiea.toggleClose();
-    zoomBtn.textContent = on ? '↩ Full body' : '🔍 Close-up';
+  const paintZoom = (on) => {
+    zoomBtn.textContent = on ? t('↩ Full body', '↩ الصورة كاملة') : t('🔍 Close-up', '🔍 قرّب');
     zoomBtn.setAttribute('aria-pressed', String(on));
-    sfx.click();
-  });
-
-  const baby = createLittleRajiea($('#babyStage'), { bubble: $('#babyBubble'), lines: CONFIG.babyLines });
-  let babyTaps = [];
-  baby.onGiggle = () => {
-    sfx.giggle();
-    const now = performance.now();
-    babyTaps = [...babyTaps.filter((t) => now - t < 5000), now];
-    if (babyTaps.length >= 5) { babyTaps = []; egg('baby'); confettiFrom($('#babyStage'), { count: 40, emoji: ['🧸', '💛', '✨'] }); }
   };
-  $('#babyGiggle').addEventListener('click', () => baby.giggle());
+  paintZoom(false);
+  zoomBtn.addEventListener('click', () => { paintZoom(rajiea.toggleClose()); sfx.click(); });
+
+  // Little Rajiea is only built when she's about to scroll into view
+  const babyStage = $('#babyStage');
+  const lazy = new IntersectionObserver(([e]) => {
+    if (!e.isIntersecting) return;
+    lazy.disconnect();
+    const baby = createLittleRajiea(babyStage, { bubble: $('#babyBubble'), lines: CONFIG.babyLines });
+    let babyTaps = [];
+    baby.onGiggle = () => {
+      sfx.giggle();
+      const now = performance.now();
+      babyTaps = [...babyTaps.filter((x) => now - x < 5000), now];
+      if (babyTaps.length >= 5) { babyTaps = []; egg('baby'); confettiFrom(babyStage, { count: 40, emoji: ['🧸', '💛', '✨'] }); }
+    };
+    $('#babyGiggle').addEventListener('click', () => baby.giggle());
+  }, { rootMargin: '900px 0px' });
+  lazy.observe(babyStage);
 
   requestAnimationFrame(() => requestAnimationFrame(() => {
     hideLoader();
-    setTimeout(() => { rajiea.play('wave'); rajiea.say(CONFIG.bubbleLines[0], 3200); }, 650);
+    setTimeout(() => { rajiea.play('wave'); rajiea.say(CONFIG.bubbleLines[0], 3200); }, 700);
   }));
 } catch (err) {
   console.warn('3D unavailable', err);
@@ -119,7 +253,11 @@ try {
   hideLoader();
 }
 
-// ── Scroll reveal & counters ──
+// ── Scroll reveal, split headings & counters ──
+$$('[data-split]').forEach((el) => {
+  const words = el.textContent.trim().split(/\s+/);
+  el.innerHTML = words.map((w, i) => `<span class="w" style="--i:${i}"><span>${esc(w)}</span></span>`).join(' ');
+});
 const reveal = new IntersectionObserver((entries) => {
   for (const e of entries) {
     if (!e.isIntersecting) continue;
@@ -127,8 +265,8 @@ const reveal = new IntersectionObserver((entries) => {
     reveal.unobserve(e.target);
     $$('[data-count]', e.target).forEach(countUp);
   }
-}, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
-$$('[data-reveal]').forEach((el) => reveal.observe(el));
+}, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+$$('[data-reveal], [data-split]').forEach((el) => reveal.observe(el));
 
 function countUp(el) {
   const target = +el.dataset.count;
@@ -142,64 +280,106 @@ function countUp(el) {
   requestAnimationFrame(step);
 }
 
-// ── Gentle 3D tilt on the fact cards ──
-if (fine && !calm) {
-  $$('.fact').forEach((card) => {
-    card.addEventListener('pointermove', (e) => {
-      const r = card.getBoundingClientRect();
-      const x = (e.clientX - r.left) / r.width - 0.5;
-      const y = (e.clientY - r.top) / r.height - 0.5;
-      card.style.setProperty('--rx', `${(-y * 10).toFixed(2)}deg`);
-      card.style.setProperty('--ry', `${(x * 12).toFixed(2)}deg`);
-      card.style.setProperty('--mx', `${((x + 0.5) * 100).toFixed(1)}%`);
-      card.style.setProperty('--my', `${((y + 0.5) * 100).toFixed(1)}%`);
-    });
-    card.addEventListener('pointerleave', () => {
-      card.style.setProperty('--rx', '0deg');
-      card.style.setProperty('--ry', '0deg');
-    });
+// ── Tilt + holographic shine (ID card and tiles) ──
+const tilt = (card, max = 10) => {
+  if (!fine || calm) return;
+  card.addEventListener('pointermove', (e) => {
+    const r = card.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width - 0.5;
+    const y = (e.clientY - r.top) / r.height - 0.5;
+    card.style.setProperty('--rx', `${(-y * max).toFixed(2)}deg`);
+    card.style.setProperty('--ry', `${(x * max * 1.2).toFixed(2)}deg`);
+    card.style.setProperty('--mx', `${((x + 0.5) * 100).toFixed(1)}%`);
+    card.style.setProperty('--my', `${((y + 0.5) * 100).toFixed(1)}%`);
   });
+  card.addEventListener('pointerleave', () => {
+    card.style.setProperty('--rx', '0deg');
+    card.style.setProperty('--ry', '0deg');
+  });
+};
+tilt($('#idCard'), 14);
+$$('.fact').forEach((c) => tilt(c, 8));
+// on phones the ID card shimmers as you scroll
+if (!fine && !calm) {
+  const card = $('#idCard');
+  addEventListener('scroll', () => {
+    const r = card.getBoundingClientRect();
+    const p = Math.max(0, Math.min(1, 1 - r.top / innerHeight));
+    card.style.setProperty('--mx', `${(p * 100).toFixed(1)}%`);
+    card.style.setProperty('--my', `${(30 + p * 40).toFixed(1)}%`);
+  }, { passive: true });
 }
+
+// ── Her favourite things ──
+const FAV_FX = {
+  tamer: { emoji: ['🎤', '🎶', '⭐'], say: t('Nagm El Geel 🎤', 'نجم الجيل 🎤'), move: 'dance' },
+  barca: { emoji: ['⚽', '💙', '❤️'], colors: ['#004d98', '#a50044', '#edbb00'], say: t('Visca Barça! 💙❤️', 'فيسكا برسا! 💙❤️'), move: 'jump' },
+  matcha: { emoji: ['🍵', '🌿'], say: t('Matcha o’clock 🍵', 'وقت الماتشا 🍵'), move: 'matcha' },
+  capp: { emoji: ['☕', '🤎'], say: t('Extra foam, please ☕', 'رغوة زيادة لو سمحت ☕'), move: 'matcha' },
+  tira: { emoji: ['🍰', '☕'], say: t('Okay… one bite 🙈', 'خلاص… حتة صغيرة بس 🙈'), move: 'candy' },
+  roz: { emoji: ['🍮', '✨'], say: t('The golden top is mine 🍮', 'الوش الدهبي بتاعي 🍮'), move: 'candy' },
+  tawouk: { emoji: ['🥙', '🛵'], say: t('Is it here yet? 😅', 'لسه موصلش؟ 😅'), move: 'wave' },
+  pink: { emoji: ['💗', '💖', '🩷'], say: t('Hot pink is a personality 💗', 'الهوت بينك شخصية 💗'), move: 'spin' },
+  snap: { emoji: ['📸', '✨'], say: t('Say cheese 📸', 'قول تشيز 📸'), move: 'selfie' },
+};
+$('#favs').innerHTML = CONFIG.favourites.map((f, i) => `
+  <button type="button" class="fav fav-${f.id}" data-fav="${f.id}" data-reveal style="--d:${i % 3}">
+    <span class="fav-icon" aria-hidden="true">${f.icon}</span>
+    <span class="fav-art" aria-hidden="true"></span>
+    <b>${esc(f.title)}</b>
+    <small>${esc(f.text)}</small>
+  </button>`).join('');
+$$('[data-reveal]', $('#favs')).forEach((el) => reveal.observe(el));
+$$('.fav').forEach((b) => b.addEventListener('click', () => {
+  const fx = FAV_FX[b.dataset.fav] || {};
+  b.classList.remove('boom');
+  void b.offsetWidth;
+  b.classList.add('boom');
+  sfx.pop();
+  confettiFrom(b, { count: 26, spread: 0.6, emoji: fx.emoji, colors: fx.colors });
+  if (rajiea && fx.move) { rajiea.play(fx.move); rajiea.say(fx.say, 2600); }
+}));
 
 // ── Smile School: myth or fact ──
 const mfGrid = $('#mfGrid');
 const tips = CONFIG.tips;
 $('#mfTotal').textContent = tips.length;
-mfGrid.innerHTML = tips.map((t, i) => `
+mfGrid.innerHTML = tips.map((tp, i) => `
   <div class="mf-card" data-reveal style="--d:${i % 4}" data-i="${i}">
     <div class="mf-inner">
       <div class="mf-face mf-front">
         <span class="mf-num">#${i + 1}</span>
-        <p class="mf-claim">${t.claim}</p>
+        <p class="mf-claim">${esc(tp.claim)}</p>
         <div class="mf-btns">
-          <button type="button" data-guess="myth">Myth</button>
-          <button type="button" data-guess="fact">Fact</button>
+          <button type="button" data-guess="myth">${t('Myth', 'خرافة')}</button>
+          <button type="button" data-guess="fact">${t('Fact', 'حقيقة')}</button>
         </div>
       </div>
-      <div class="mf-face mf-back ${t.fact ? 'is-fact' : 'is-myth'}">
-        <span class="mf-verdict">${t.fact ? 'Fact ✓' : 'Myth ✗'}</span>
+      <div class="mf-face mf-back ${tp.fact ? 'is-fact' : 'is-myth'}">
+        <span class="mf-verdict">${tp.fact ? t('Fact ✓', 'حقيقة ✓') : t('Myth ✗', 'خرافة ✗')}</span>
         <p class="mf-result"></p>
-        <p class="mf-why">${t.why}</p>
-        <button type="button" class="mf-flip">Flip back</button>
+        <p class="mf-why">${esc(tp.why)}</p>
+        <button type="button" class="mf-flip">${t('Flip back', 'اقلب تاني')}</button>
       </div>
     </div>
   </div>`).join('');
 $$('[data-reveal]', mfGrid).forEach((el) => reveal.observe(el));
 let mfScore = 0, mfDone = 0;
 $$('.mf-card', mfGrid).forEach((card) => {
-  const t = tips[+card.dataset.i];
+  const tp = tips[+card.dataset.i];
   $$('[data-guess]', card).forEach((b) => b.addEventListener('click', () => {
     if (card.classList.contains('answered')) { card.classList.add('flipped'); return; }
-    const right = (b.dataset.guess === 'fact') === t.fact;
+    const right = (b.dataset.guess === 'fact') === tp.fact;
     card.classList.add('answered', 'flipped', right ? 'got' : 'missed');
-    $('.mf-result', card).textContent = right ? 'You got it! 🎉' : 'Not quite — here’s the truth:';
+    card.dataset.badge = right ? t('Got it ✓', 'صح ✓') : t('Missed', 'فاتتك');
+    $('.mf-result', card).textContent = right ? t('You got it! 🎉', 'صح عليك! 🎉') : t('Not quite — here’s the truth:', 'مش بالظبط — دي الحقيقة:');
     $$('[data-guess]', card).forEach((x) => (x.disabled = true));
     b.classList.add('picked');
     if (right) { mfScore++; sfx.ding(); confettiFrom(card, { count: 24, spread: 0.6 }); } else sfx.buzz();
     mfDone++;
     $('#mfScore').textContent = mfScore;
     if (mfDone === tips.length && mfScore === tips.length) {
-      setTimeout(() => { sfx.tada(); confetti({ count: 160 }); }, 500);
+      setTimeout(() => { sfx.tada(); confetti({ count: 160 }); egg('scholar'); }, 500);
     }
   }));
   $('.mf-flip', card).addEventListener('click', () => card.classList.toggle('flipped'));
@@ -210,101 +390,124 @@ $$('.mf-card', mfGrid).forEach((card) => {
 
 // ── Games: tabs, quiz, zapper ──
 initQuiz($('#quiz'), CONFIG, { onPerfect: () => egg('perfect') });
-const zapper = initZapper($('#zap'), { onScore: (s) => { if (s >= 25) egg('golden'); } });
+const zapper = initZapper($('#zap'), {
+  onScore: (s, stats) => {
+    if (s >= 25) egg('golden');
+    if (stats?.candies >= 5) { egg('candy'); rajiea?.say(t('I saw that 👀🍬', 'أنا شفت ده 👀🍬'), 3000); }
+  },
+});
 const tabs = $$('[role="tab"]');
 const ink = $('.tab-ink');
 const moveInk = (tab) => {
+  if (!tab) return;
   ink.style.width = `${tab.offsetWidth}px`;
   ink.style.transform = `translateX(${tab.offsetLeft}px)`;
 };
 tabs.forEach((tab) => tab.addEventListener('click', () => {
-  tabs.forEach((t) => {
-    const on = t === tab;
-    t.setAttribute('aria-selected', String(on));
-    $(`#${t.getAttribute('aria-controls')}`).hidden = !on;
+  tabs.forEach((x) => {
+    const on = x === tab;
+    x.setAttribute('aria-selected', String(on));
+    $(`#${x.getAttribute('aria-controls')}`).hidden = !on;
   });
   if (tab.id !== 'tab-zap') zapper.stop();
   moveInk(tab);
   sfx.click();
 }));
+const activeTab = () => tabs.find((x) => x.getAttribute('aria-selected') === 'true');
 requestAnimationFrame(() => moveInk(tabs[0]));
-addEventListener('resize', () => moveInk(tabs.find((t) => t.getAttribute('aria-selected') === 'true')));
-document.fonts?.ready.then(() => moveInk(tabs.find((t) => t.getAttribute('aria-selected') === 'true')));
+addEventListener('resize', () => moveInk(activeTab()));
+document.fonts?.ready.then(() => moveInk(activeTab()));
 
 // ── Brush along ──
 initBrush($('#mouth'), {
   ring: $('#bRing'), time: $('#bTime'), zone: $('#bZone'), tip: $('#bTip'), start: $('#bStart'), reset: $('#bReset'),
   demo: $('#bDemo'), coach: $('#bCoach'), week: $('#bWeek'), streak: $('#bStreak'), chips: $$('#bChips span'),
-});
+}, { onComplete: (streak) => { egg('clean'); if (streak >= 3) egg('streak'); } });
 
 // ── Envelope ──
 const env = $('#envelope');
 const note = CONFIG.note;
 $('#letter').innerHTML = `
-  <span class="l-greet">${note.greeting}</span>
-  ${note.body.map((p) => `<span class="l-p">${p}</span>`).join('')}
-  <span class="l-sign">${note.signoff}</span>`;
-let opened = false;
-let suppressEnvelope = false;
+  <span class="l-greet">${esc(note.greeting)}</span>
+  ${note.body.map((p) => `<span class="l-p">${esc(p)}</span>`).join('')}
+  <span class="l-sign">${esc(note.signoff)}</span>`;
+let opened = 0;
 env.addEventListener('click', () => {
-  if (suppressEnvelope) { suppressEnvelope = false; return; }
   const open = !env.classList.contains('open');
   env.classList.toggle('open', open);
   env.setAttribute('aria-expanded', String(open));
-  env.setAttribute('aria-label', open ? 'Close the letter' : 'Open the letter');
+  env.setAttribute('aria-label', open ? t('Close the letter', 'اقفل الجواب') : t('Open the letter', 'افتح الجواب'));
   if (open) {
     sfx.ding();
     if (!opened) setTimeout(() => confettiFrom(env, { count: 70, spread: 0.8 }), 450);
-    opened = true;
+    if (++opened >= 5) egg('reader');
   } else sfx.click();
 });
+
+// ── Notes for Rajiea ──
+if (!CONFIG.notes) $$('a[href="#notes"]').forEach((a) => a.remove());
+initNotes($('#notes'), { onWord: (text) => wordEggs(text, true), onSent: () => egg('pen') });
 
 // ── Nav ──
 const nav = $('#nav');
 addEventListener('scroll', () => nav.classList.toggle('scrolled', scrollY > 20), { passive: true });
-const links = $$('.nav-links a');
+const links = $$('.nav-links a, .dock a');
 const spy = new IntersectionObserver((entries) => {
   for (const e of entries) {
     if (!e.isIntersecting) continue;
     links.forEach((a) => a.classList.toggle('on', a.getAttribute('href') === `#${e.target.id}`));
   }
 }, { rootMargin: '-45% 0px -50% 0px' });
-['meet', 'tips', 'games', 'brush'].forEach((id) => spy.observe(document.getElementById(id)));
-
-sparkleTrail();
-
-// ── (footer) ──
-const BOX = {
-  a: { s: 'icmjGvQuVajfixIlAA+seA==', i: 'EH8zGfAlnDO3BimU', c: '31LQOUBAgERdUBS/G0pzLud5UCWsD1TjUWeLxdCGdg==' },
-  b: { s: '/7IoIz940bogJ2jVrLUEsQ==', i: 'xzG/dut0pxwFMmYW', c: '3j3FVvTEhO1eLhHrSKYlXDmmW8n1cV8lAnitqQdwzmxkzx84' },
-  c: 'assets/blob.txt',
-};
-
-const multiTap = (el, n, gap, fn) => {
-  let count = 0, timer = 0;
-  el.addEventListener('click', (e) => {
-    e.stopPropagation();
-    count++;
-    clearTimeout(timer);
-    timer = setTimeout(() => (count = 0), gap);
-    if (count >= n) { count = 0; fn(); }
-  });
-};
-multiTap($('#footTooth'), 3, 900, () => openPad(BOX.a));
-$$('.mk-dot').forEach((el) => multiTap(el, 3, 1200, () => openPad(BOX.c, 'story')));
-
-// pressing and holding the wax seal for a few seconds
-const seal = $('.seal');
-let sealTimer = 0;
-const sealCancel = () => clearTimeout(sealTimer);
-seal.addEventListener('pointerdown', () => {
-  sealCancel();
-  sealTimer = setTimeout(() => { suppressEnvelope = true; openPad(BOX.b, 'kiss'); }, 2600);
-});
-['pointerup', 'pointerleave', 'pointercancel'].forEach((t) => seal.addEventListener(t, sealCancel));
-seal.addEventListener('contextmenu', (e) => e.preventDefault());
+['top', 'meet', 'favs-sec', 'tips', 'games', 'brush', 'notes'].forEach((id) => { const el = document.getElementById(id); if (el) spy.observe(el); });
 
 // ── Easter eggs ──
+const WORDS = [
+  { id: 'name', re: /rajiea|راجيه|راجية/, run: () => { rajiea?.play('dance'); rajiea?.say(t('That’s me 💖', 'دي أنا 💖'), 2600); confetti({ x: innerWidth / 2, y: innerHeight / 3, count: 60, emoji: ['💖', '✨'] }); } },
+  { id: 'barca', re: /barca|barça|visca|برشلون|برسا/, run: () => { rajiea?.play('jump'); rajiea?.say(t('Visca Barça! 💙❤️', 'فيسكا برسا! 💙❤️'), 3000); confetti({ count: 140, colors: ['#004d98', '#a50044', '#edbb00', '#004d98', '#a50044'] }); confetti({ count: 20, emoji: ['⚽'] }); sfx.tada(); } },
+  { id: 'tamer', re: /tamer|تامر/, run: () => { rajiea?.play('dance'); rajiea?.say(t('Nagm El Geel 🎤', 'نجم الجيل 🎤'), 3000); confetti({ count: 50, emoji: ['🎤', '🎶', '⭐', '🎵'] }); sfx.party(); } },
+  { id: 'cafe', re: /matcha|cappuccino|cappucino|ماتشا|كابتشينو|كابوتشينو/, run: () => { rajiea?.play('matcha'); rajiea?.say(t('Matcha or cappuccino? Both ☕🍵', 'ماتشا ولا كابتشينو؟ الاتنين ☕🍵'), 3000); confetti({ x: innerWidth / 2, y: -20, count: 50, emoji: ['🍵', '☕'] }); } },
+  { id: 'sweet', re: /tiramisu|roz|rice pudding|تيراميسو|رز بلبن|رز باللبن/, run: () => { rajiea?.play('candy'); rajiea?.say(t('Okay… one bite 🙈', 'خلاص… حتة صغيرة بس 🙈'), 3000); confetti({ x: innerWidth / 2, y: -20, count: 50, emoji: ['🍰', '🍮'] }); } },
+  { id: 'tawouk', re: /tawouk|tawook|dahan|طاووق|الدهان|الدهّان/, run: () => { rajiea?.play('wave'); rajiea?.say(t('Is the order here yet? 😅', 'الأوردر لسه موصلش؟ 😅'), 3200); confetti({ x: innerWidth / 2, y: -20, count: 36, emoji: ['🥙', '🛵'] }); } },
+];
+const fired = new Set();
+function wordEggs(text, fromBox = false) {
+  const s = text.toLowerCase();
+  for (const w of WORDS) {
+    if (!w.re.test(s) || fired.has(w.id)) continue;
+    fired.add(w.id);
+    egg(w.id);
+    if (!fromBox) document.getElementById('top').scrollIntoView({ behavior: 'smooth' });
+    w.run();
+    return true;
+  }
+  return false;
+}
+// talk to her
+const REPLIES = [
+  { re: /^(hi|hey|hello|hiya|salam|اهلا|أهلا|هاي|هالو|السلام|سلام|ازيك|إزيك)/, move: 'wave', say: t('Hi! 👋 Happy you’re here.', 'أهلًا! 👋 نوّرت.') },
+  { re: /how are you|how r u|عاملة ايه|عامله ايه|اخبارك|أخبارك|ازيك/, move: 'jump', say: t('Smiling, as always 😁', 'بضحك، زي كل يوم 😁') },
+  { re: /love|cute|pretty|beautiful|حب|حلوة|جميلة|عسل|قمر/, move: 'blush', say: t('Aww, stop it 🙈💗', 'يا خبر… بطّل بقى 🙈💗') },
+  { re: /selfie|photo|picture|pic|صور|سيلفي/, move: 'selfie', say: t('Say cheese 📸', 'قول تشيز 📸') },
+  { re: /dance|party|ارقص|رقص|حفلة/, move: 'dance', say: t('Dance break 🎶', 'بريك رقص 🎶') },
+  { re: /candy|sugar|chocolate|sweet|حلويات|شوكولات|سكر|بونبون/, move: 'candy', say: t('Is that… sugar? 😱', 'ده… سكر؟ 😱') },
+  { re: /tooth|teeth|dentist|brush|floss|سنان|سنة|ضرس|دكتور|فرشة|خيط/, move: 'floss', say: t('Floss tonight. I’ll know. 😌', 'استخدم الخيط النهارده. هعرف. 😌') },
+  { re: /bye|good ?night|سلام|باي|تصبح|تصبحي/, move: 'wave', say: t('Bye! Brush before bed 🌙', 'باي! اغسل سنانك قبل ما تنام 🌙') },
+];
+$('#chat').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const input = e.target.elements.say;
+  const text = input.value.trim();
+  input.value = '';
+  if (!text || !rajiea) return;
+  sfx.boop();
+  if (wordEggs(text, true)) return;
+  const hitReply = REPLIES.find((r) => r.re.test(text.toLowerCase()));
+  if (hitReply) { rajiea.play(hitReply.move); rajiea.say(hitReply.say, 3000); return; }
+  rajiea.play('wink');
+  rajiea.say(CONFIG.bubbleLines[Math.floor(Math.random() * CONFIG.bubbleLines.length)], 3000);
+});
+$('#chat').elements.say.addEventListener('input', (e) => wordEggs(e.target.value, true));
+
 let typed = '';
 const KONAMI = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
 let kIndex = 0;
@@ -319,29 +522,23 @@ addEventListener('keydown', (e) => {
     confetti({ x: innerWidth / 2, y: -20, count: 90, emoji: ['🦷', '✨', '🪥'] });
   }
   if (k.length === 1) {
-    typed = (typed + k).slice(-6);
-    if (typed === 'rajiea') {
-      egg('name');
-      rajiea?.play('dance');
-      rajiea?.say('That’s me 💖', 2600);
-      confetti({ x: innerWidth / 2, y: innerHeight / 3, count: 60, emoji: ['💖', '✨'] });
-      document.getElementById('top').scrollIntoView({ behavior: 'smooth' });
-    }
+    typed = (typed + k).slice(-16);
+    if (wordEggs(typed)) typed = '';
   }
 });
 
 // her name likes attention
 let titleTaps = 0, titleTimer = 0;
-$('#titleEn').addEventListener('click', () => {
+$('.title').addEventListener('click', () => {
   titleTaps++;
   clearTimeout(titleTimer);
   titleTimer = setTimeout(() => (titleTaps = 0), 1500);
   if (titleTaps >= 5) {
     titleTaps = 0;
-    const t = $('.title');
-    t.classList.remove('shine');
-    void t.offsetWidth;
-    t.classList.add('shine');
+    const el = $('.title');
+    el.classList.remove('shine');
+    void el.offsetWidth;
+    el.classList.add('shine');
     egg('title');
     sfx.tada();
   }
@@ -359,7 +556,7 @@ soundBtn.addEventListener('click', () => {
     document.body.classList.add('party');
     sfx.party();
     rajiea?.play('dance');
-    rajiea?.say('Party mode 🪩', 3000);
+    rajiea?.say(t('Party mode 🪩', 'وضع الحفلة 🪩'), 3000);
     egg('dj');
     setTimeout(() => document.body.classList.remove('party'), 6500);
   }
@@ -369,21 +566,26 @@ soundBtn.addEventListener('click', () => {
 const hi = new URLSearchParams(location.search).get('hi');
 if (hi && rajiea) {
   const nameHi = hi.replace(/[^\p{L}\p{N} '-]/gu, '').slice(0, 24).trim();
-  if (nameHi) {
-    setTimeout(() => { rajiea.play('wave'); rajiea.say(`Hi ${nameHi}! Welcome 💖`, 4200); egg('friend'); }, 4200);
-  }
+  if (nameHi) setTimeout(() => { rajiea.play('wave'); rajiea.say(t(`Hi ${nameHi}! Welcome 💖`, `أهلًا يا ${nameHi}! نوّرت 💖`), 4200); egg('friend'); }, 4200);
 }
 
-// night owls
+// night owls and early birds
 const hour = new Date().getHours();
-if (hour < 5 && rajiea) setTimeout(() => { rajiea.say('It’s late — did you brush before bed? 🌙', 4200); egg('night'); }, 8000);
+if (hour < 5 && rajiea) setTimeout(() => { rajiea.say(t('It’s late — did you brush before bed? 🌙', 'الوقت اتأخر — غسلت سنانك قبل النوم؟ 🌙'), 4200); egg('night'); }, 8000);
+if (hour >= 5 && hour < 7 && rajiea) setTimeout(() => { rajiea.play('matcha'); rajiea.say(t('Up early! Matcha first? 🍵☀️', 'صاحي بدري! ماتشا الأول؟ 🍵☀️'), 4200); egg('early'); }, 8000);
 
 // developers
-console.log('%c🦷 Hi, curious one.', 'font: 600 18px Georgia, serif; color: #ff3d8b');
-console.log('%cYou found the back room. Try typing  floss()  and press Enter.', 'color: #8a5a3b; font-size: 13px');
+console.log('%c🦷 Hi, curious one.', 'font: 600 18px Georgia, serif; color: #ff2e88');
+console.log('%cYou found the back room. Try typing  floss()  and press Enter.', 'color: #8a5a44; font-size: 13px');
 window.floss = () => {
   rajiea?.play('floss');
-  rajiea?.say('The floss dance 🪥', 3000);
+  rajiea?.say(t('The floss dance 🪥', 'رقصة الخيط 🪥'), 3000);
   egg('console');
   return '🪥 dentist approved';
+};
+
+// ── for the parts of the site that stay locked ──
+export const api = {
+  $, $$, sfx, confetti, confettiFrom, startMusic, openPad, t, isAr, egg, CONFIG,
+  get rajiea() { return rajiea; },
 };

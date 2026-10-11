@@ -48,7 +48,9 @@ export const sfx = {
   boop: () => tone({ freq: 300, to: 520, dur: 0.1, type: 'sine', vol: 0.16 }),
   giggle: () => [880, 1046, 932, 1175, 1046].forEach((f, i) => tone({ freq: f, to: f * 1.15, dur: 0.07, type: 'sine', vol: 0.13, delay: i * 0.075 })),
   key: () => tone({ freq: 520, dur: 0.05, type: 'triangle', vol: 0.08 }),
-  kiss: () => { tone({ freq: 1400, to: 500, dur: 0.12, type: 'sine', vol: 0.18 }); tone({ freq: 900, to: 1800, dur: 0.06, type: 'sine', vol: 0.12, delay: 0.1 }); },
+  shutter: () => { tone({ freq: 2400, to: 900, dur: 0.04, type: 'square', vol: 0.06 }); tone({ freq: 1600, to: 500, dur: 0.06, type: 'square', vol: 0.05, delay: 0.07 }); },
+  whoosh: () => tone({ freq: 300, to: 1400, dur: 0.35, type: 'sine', vol: 0.1 }),
+  chirp: () => { tone({ freq: 1400, to: 500, dur: 0.12, type: 'sine', vol: 0.18 }); tone({ freq: 900, to: 1800, dur: 0.06, type: 'sine', vol: 0.12, delay: 0.1 }); },
   party: () => {
     const notes = [523, 659, 784, 659, 880, 784, 659, 523, 587, 740, 880, 740, 988, 880, 740, 587];
     notes.forEach((f, i) => { tone({ freq: f, dur: 0.16, type: 'triangle', vol: 0.12, delay: i * 0.2 }); if (i % 2 === 0) tone({ freq: 110, to: 60, dur: 0.12, type: 'sine', vol: 0.22, delay: i * 0.2 }); });
@@ -106,7 +108,7 @@ function tick() {
   rafId = pieces.length ? requestAnimationFrame(tick) : 0;
 }
 
-export function confetti({ x = innerWidth / 2, y = innerHeight / 2, count = 120, spread = 1, emoji = null } = {}) {
+export function confetti({ x = innerWidth / 2, y = innerHeight / 2, count = 120, spread = 1, emoji = null, colors = null } = {}) {
   if (!g || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   for (let i = 0; i < count; i++) {
     const a = Math.random() * Math.PI * 2;
@@ -118,7 +120,7 @@ export function confetti({ x = innerWidth / 2, y = innerHeight / 2, count = 120,
       rot: Math.random() * 6,
       vr: (Math.random() - 0.5) * 0.3,
       size: 7 + Math.random() * 8,
-      color: COLORS[(Math.random() * COLORS.length) | 0],
+      color: (colors || COLORS)[(Math.random() * (colors || COLORS).length) | 0],
       shape: emoji ? 'emoji' : Math.random() < 0.22 ? 'heart' : Math.random() < 0.5 ? 'dot' : 'rect',
       text: emoji ? emoji[(Math.random() * emoji.length) | 0] : '',
       life: 140 + Math.random() * 60,
@@ -139,7 +141,7 @@ export function sparkleTrail() {
   let live = 0;
   addEventListener('pointermove', (e) => {
     const now = performance.now();
-    if (now - last < 45 || live > 24) return;
+    if (now - last < 70 || live > 12) return;
     last = now;
     const s = document.createElement('span');
     s.className = 'sparkle';

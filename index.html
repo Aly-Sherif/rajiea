@@ -4,117 +4,187 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Rajiea · راجية — Dentist &amp; Smile-maker</title>
-  <meta name="description" content="A little world made for Rajiea — dentist, smile-maker, one of a kind. Meet the 3D her, learn tooth secrets and play for a prize.">
+  <meta name="ar-title" content="راجية · Rajiea — دكتورة أسنان وصانعة ابتسامات">
+  <meta name="description" content="A little world made for Rajiea — dentist, smile-maker, one of a kind.">
   <meta name="robots" content="noindex, nofollow">
-  <meta name="theme-color" content="#ff3d8b">
+  <meta name="theme-color" content="#ff2e88">
   <meta property="og:type" content="website">
+  <meta property="og:url" content="https://rajiea.com/">
+  <meta property="og:site_name" content="Rajiea · راجية">
   <meta property="og:title" content="Rajiea · راجية">
-  <meta property="og:description" content="Dentist. Smile-maker. One of a kind. Come say hi and play for a prize 🦷💖">
+  <meta property="og:description" content="Dentist. Smile-maker. One of a kind. A little world made just for her 💗">
   <meta property="og:image" content="https://rajiea.com/og.png">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="3D Rajiea in her white coat and hijab, with her name in pink">
   <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://rajiea.com/og.png">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <script>
+    try {
+      if (localStorage.getItem('rajiea-pass')) document.documentElement.classList.add('known');
+      if (localStorage.getItem('rajiea-lang') === 'ar') { document.documentElement.lang = 'ar'; document.documentElement.dir = 'rtl'; }
+    } catch (e) {}
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Aref+Ruqaa:wght@700&family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500;1,9..144,600&family=Nunito:wght@500;600;700;800&family=Tajawal:wght@500;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Aref+Ruqaa:wght@400;700&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,600&family=Manrope:wght@400;500;600;700;800&family=Tajawal:wght@400;500;700;800&display=swap">
   <link rel="stylesheet" href="css/style.css">
+  <link rel="modulepreload" href="js/boot.js">
+  <link rel="modulepreload" href="js/main.js">
+  <link rel="modulepreload" href="js/character.js">
   <link rel="modulepreload" href="vendor/three.module.min.js">
+  <link rel="preload" href="assets/c.txt" as="fetch" crossorigin>
 </head>
 <body>
+  <!-- ───────── The way in ───────── -->
+  <div class="gate" id="gate">
+    <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+    <div class="gate-grid" aria-hidden="true"></div>
+    <div class="gate-inner">
+      <div class="gate-clock"><p id="gateTime">--:--</p><p id="gateDate"></p></div>
+      <div class="gate-card">
+        <svg class="gate-mark" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-tooth"/></svg>
+        <p class="gate-hi" id="gateHi" data-ar="أهلًا 👋">Hi there 👋</p>
+        <h1 class="gate-title"><span class="g-en" dir="ltr">Rajiea</span><span class="g-ar" lang="ar">راجية</span></h1>
+        <p class="gate-sub" data-ar="عالم صغير وخاص. اكتب الكود علشان تدخل.">A private little world. Enter the code to come in.</p>
+        <div class="gate-pad">
+          <div class="gate-dots" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+          <div class="gate-keys" dir="ltr">
+            <button type="button" data-k="1">1</button><button type="button" data-k="2">2</button><button type="button" data-k="3">3</button>
+            <button type="button" data-k="4">4</button><button type="button" data-k="5">5</button><button type="button" data-k="6">6</button>
+            <button type="button" data-k="7">7</button><button type="button" data-k="8">8</button><button type="button" data-k="9">9</button>
+            <span></span><button type="button" data-k="0">0</button><button type="button" data-kdel aria-label="Delete" data-ar-label="مسح">⌫</button>
+          </div>
+        </div>
+        <p class="gate-msg" id="gateMsg" aria-live="polite"></p>
+        <p class="gate-foot" data-ar="معندكش الكود؟ اطلبه 💌">No code? Just ask 💌</p>
+      </div>
+    </div>
+  </div>
+  <noscript><p class="nojs">This little world needs JavaScript turned on.</p></noscript>
+
   <div class="loader" id="loader" aria-hidden="true">
-    <svg class="loader-tooth" viewBox="0 0 64 64"><use href="#i-tooth"/></svg>
-    <p>Polishing smiles…</p>
+    <div class="loader-ring"><svg viewBox="0 0 64 64"><use href="#i-tooth"/></svg></div>
+    <p data-ar="بنلمّع الابتسامات…">Polishing smiles…</p>
   </div>
   <canvas id="fx" aria-hidden="true"></canvas>
+  <div class="progress" id="progress" aria-hidden="true"></div>
+  <div class="cursor-dot" id="cursorDot" aria-hidden="true"></div>
+  <div class="cursor-ring" id="cursorRing" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
 
   <!-- Reusable drawings -->
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
     <defs>
       <symbol id="i-tooth" viewBox="0 0 64 64">
-        <path d="M32 15C26 9 14 7 10 15S9 32 12 40s3 16 8 16 5-10 8-14 6-3 8 0 3 14 8 14 6-9 8-16 6-17 2-25-16-6-22 0z" fill="#fff" stroke="#5b3a26" stroke-width="3" stroke-linejoin="round"/>
-        <circle cx="24" cy="26" r="2.8" fill="#3f2617"/><circle cx="40" cy="26" r="2.8" fill="#3f2617"/>
+        <path d="M32 15C26 9 14 7 10 15S9 32 12 40s3 16 8 16 5-10 8-14 6-3 8 0 3 14 8 14 6-9 8-16 6-17 2-25-16-6-22 0z" fill="#fff" stroke="#4a2c20" stroke-width="3" stroke-linejoin="round"/>
+        <circle cx="24" cy="26" r="2.8" fill="#2a1712"/><circle cx="40" cy="26" r="2.8" fill="#2a1712"/>
         <circle cx="19" cy="32" r="3" fill="#ff9cc4"/><circle cx="45" cy="32" r="3" fill="#ff9cc4"/>
-        <path d="M27 32q5 5 10 0" fill="none" stroke="#3f2617" stroke-width="2.6" stroke-linecap="round"/>
+        <path d="M27 32q5 5 10 0" fill="none" stroke="#2a1712" stroke-width="2.6" stroke-linecap="round"/>
       </symbol>
     </defs>
   </svg>
 
   <header class="nav" id="nav">
-    <a class="brand" href="#top" aria-label="Back to top">
+    <a class="brand" href="#top" aria-label="Back to top" data-ar-label="لفوق">
       <svg viewBox="0 0 64 64"><use href="#i-tooth"/></svg>
-      <span>Rajiea</span>
+      <span data-ar="راجية">Rajiea</span>
     </a>
     <nav class="nav-links" aria-label="Sections">
-      <a href="#meet">About</a>
-      <a href="#tips">Tips</a>
-      <a href="#games">Games</a>
-      <a href="#brush">Brush</a>
+      <a href="#meet" data-ar="عنها">About</a>
+      <a href="#favs-sec" data-ar="المفضّلات">Favourites</a>
+      <a href="#tips" data-ar="نصايح">Tips</a>
+      <a href="#games" data-ar="ألعاب">Games</a>
+      <a href="#brush" data-ar="فرشة">Brush</a>
+      <a href="#notes" data-ar="رسايل">Notes</a>
     </nav>
-    <button class="sound" id="soundBtn" type="button" aria-label="Turn sound off" title="Sound">🔊</button>
+    <div class="nav-tools">
+      <button class="lang" id="langBtn" type="button" aria-label="Switch to Arabic" data-ar-label="Switch to English"><span data-ar="EN">ع</span></button>
+      <button class="sound" id="soundBtn" type="button" aria-label="Turn sound off"><span class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span></button>
+    </div>
   </header>
+
+  <nav class="dock" aria-label="Sections">
+    <a href="#top"><span>🏠</span><b data-ar="الرئيسية">Home</b></a>
+    <a href="#meet"><span>🧕</span><b data-ar="عنها">About</b></a>
+    <a href="#games"><span>🎮</span><b data-ar="ألعاب">Games</b></a>
+    <a href="#brush"><span>🪥</span><b data-ar="فرشة">Brush</b></a>
+    <a href="#notes"><span>💌</span><b data-ar="رسايل">Notes</b></a>
+  </nav>
 
   <main>
     <!-- ───────── Hero ───────── -->
     <section class="hero" id="top">
-      <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
+      <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+      <div class="hero-grid" aria-hidden="true"></div>
       <div class="hero-inner">
         <div class="hero-copy">
-          <span class="pill">✦ Welcome to her little world</span>
+          <span class="pill"><i class="pulse"></i><span data-ar="أهلًا بيك في عالمها الصغير">Welcome to her little world</span></span>
           <h1 class="title" aria-label="Rajiea, راجية">
-            <span class="title-en" id="titleEn" aria-hidden="true">Rajiea</span>
+            <span class="title-en" id="titleEn" aria-hidden="true" dir="ltr">Rajiea</span>
             <span class="title-ar" lang="ar" dir="rtl" aria-hidden="true">راجية</span>
           </h1>
-          <p class="tagline">Dentist <span class="dot">·</span> <span class="rotator" id="rotator">smile-maker</span></p>
+          <p class="tagline"><span data-ar="دكتورة أسنان">Dentist</span> <span class="dot">·</span> <span class="rotator" id="rotator"></span></p>
         </div>
         <div class="hero-extra">
-          <p class="lead">A hijabi dentist who protects smiles for a living. Meet the 3D her, learn a few tooth secrets, and play for a prize.</p>
+          <p class="lead" data-ar="دكتورة أسنان محجّبة شغلتها إنها تحمي الابتسامات. اتعرّف على نسختها الـ3D، اعرف شوية أسرار عن السنان، والعب علشان تكسب جايزة.">A hijabi dentist who protects smiles for a living. Meet the 3D her, learn a few tooth secrets, and play for a prize.</p>
           <div class="cta">
-            <a class="btn btn-pink" href="#games">Play &amp; win 🎁</a>
-            <a class="btn btn-cream" href="#meet">Meet her</a>
+            <a class="btn btn-pink magnet" href="#games"><span data-ar="العب واكسب">Play &amp; win</span> 🎁</a>
+            <a class="btn btn-glass magnet" href="#meet"><span data-ar="اتعرّف عليها">Meet her</span> →</a>
           </div>
         </div>
 
         <div class="stage-col">
           <div class="stage" id="stage">
-            <div class="stage-glow"></div>
+            <div class="portal" aria-hidden="true"><i></i><i></i></div>
+            <div class="orbit" id="orbit" aria-hidden="true"></div>
             <div class="bubble" id="bubble" role="status" aria-live="polite"></div>
             <button type="button" class="zoom-btn" id="zoomBtn" aria-pressed="false">🔍 Close-up</button>
-            <p class="stage-fallback">The 3D Rajiea needs a newer browser to appear — but the games below still work! 🦷</p>
+            <p class="stage-fallback" data-ar="راجية الـ3D محتاجة متصفح أحدث — بس الألعاب اللي تحت شغّالة عادي! 🦷">The 3D Rajiea needs a newer browser to appear — but the games below still work! 🦷</p>
           </div>
           <div class="controls">
-            <div class="moves" role="group" aria-label="Make her move">
-              <button type="button" data-move="wave"><span>👋</span>Wave</button>
-              <button type="button" data-move="jump"><span>✨</span>Jump</button>
-              <button type="button" data-move="spin"><span>🌀</span>Spin</button>
-              <button type="button" data-move="dance"><span>🎶</span>Dance</button>
-              <button type="button" data-move="wink"><span>😉</span>Wink</button>
-              <button type="button" data-move="floss"><span>🪥</span>Floss</button>
-              <button type="button" data-move="candy"><span>🍬</span>Candy?</button>
-              <button type="button" data-move="sneeze"><span>🤧</span>Sneeze</button>
+            <div class="moves" role="group" aria-label="Make her move" data-ar-label="خلّيها تتحرك">
+              <button type="button" data-move="wave"><span>👋</span><b data-ar="سلام">Wave</b></button>
+              <button type="button" data-move="jump"><span>✨</span><b data-ar="نطّة">Jump</b></button>
+              <button type="button" data-move="spin"><span>🌀</span><b data-ar="لفّة">Spin</b></button>
+              <button type="button" data-move="dance"><span>🎶</span><b data-ar="رقصة">Dance</b></button>
+              <button type="button" data-move="selfie"><span>📸</span><b data-ar="سيلفي">Selfie</b></button>
+              <button type="button" data-move="matcha"><span>🍵</span><b data-ar="ماتشا">Matcha</b></button>
+              <button type="button" data-move="wink"><span>😉</span><b data-ar="غمزة">Wink</b></button>
+              <button type="button" data-move="floss"><span>🪥</span><b data-ar="خيط">Floss</b></button>
+              <button type="button" data-move="candy"><span>🍬</span><b data-ar="حلويات؟">Candy?</b></button>
+              <button type="button" data-move="sneeze"><span>🤧</span><b data-ar="عطسة">Sneeze</b></button>
             </div>
             <div class="controls-row">
-              <div class="swatches" role="radiogroup" aria-label="Hijab colour">
-                <span class="ctl-label">Hijab</span>
-                <button type="button" role="radio" aria-checked="true" aria-label="Black" style="--sw:#26222a" data-hijab="#26222a"></button>
-                <button type="button" role="radio" aria-checked="false" aria-label="Olive" style="--sw:#6f6a52" data-hijab="#6f6a52"></button>
-                <button type="button" role="radio" aria-checked="false" aria-label="Grey" style="--sw:#8e8b92" data-hijab="#8e8b92"></button>
-                <button type="button" role="radio" aria-checked="false" aria-label="Pink" style="--sw:#ff6fa8" data-hijab="#ff6fa8"></button>
-                <button type="button" role="radio" aria-checked="false" aria-label="Beige" style="--sw:#e6cfb2" data-hijab="#e6cfb2"></button>
-                <button type="button" role="radio" aria-checked="false" aria-label="Brown" style="--sw:#7a4e33" data-hijab="#7a4e33"></button>
+              <div class="swatches" role="radiogroup" aria-label="Hijab colour" data-ar-label="لون الطرحة">
+                <span class="ctl-label" data-ar="الطرحة">Hijab</span>
+                <button type="button" role="radio" aria-checked="true" aria-label="Black" data-ar-label="أسود" style="--sw:#26222a" data-hijab="#26222a"></button>
+                <button type="button" role="radio" aria-checked="false" aria-label="Olive" data-ar-label="زيتي" style="--sw:#6f6a52" data-hijab="#6f6a52"></button>
+                <button type="button" role="radio" aria-checked="false" aria-label="Grey" data-ar-label="رمادي" style="--sw:#8e8b92" data-hijab="#8e8b92"></button>
+                <button type="button" role="radio" aria-checked="false" aria-label="Pink" data-ar-label="بينك" style="--sw:#ff6fa8" data-hijab="#ff6fa8"></button>
+                <button type="button" role="radio" aria-checked="false" aria-label="Beige" data-ar-label="بيج" style="--sw:#e6cfb2" data-hijab="#e6cfb2"></button>
+                <button type="button" role="radio" aria-checked="false" aria-label="Brown" data-ar-label="بني" style="--sw:#7a4e33" data-hijab="#7a4e33"></button>
               </div>
-              <div class="mode" role="group" aria-label="Outfit">
-                <button type="button" data-outfit="clinic" aria-pressed="true">🦷 Clinic</button>
-                <button type="button" data-outfit="city" aria-pressed="false">📱 City</button>
-                <button type="button" data-outfit="cozy" aria-pressed="false">☁️ Cozy</button>
+              <div class="mode" role="group" aria-label="Outfit" data-ar-label="اللبس">
+                <button type="button" data-outfit="clinic" aria-pressed="true" data-ar="🦷 عيادة">🦷 Clinic</button>
+                <button type="button" data-outfit="city" aria-pressed="false" data-ar="📱 خروجة">📱 City</button>
+                <button type="button" data-outfit="cozy" aria-pressed="false" data-ar="☁️ بيتي">☁️ Cozy</button>
               </div>
             </div>
           </div>
-          <p class="hint">Drag to turn her around · tap her for a surprise</p>
+          <form class="chat" id="chat" autocomplete="off">
+            <input name="say" maxlength="80" placeholder="Say something to her…" data-ar-ph="قول لها حاجة…" aria-label="Say something to her" data-ar-label="قول لها حاجة" dir="auto" enterkeyhint="send">
+            <button type="submit" aria-label="Send" data-ar-label="ابعت">↑</button>
+          </form>
+          <p class="hint" data-ar="اسحب علشان تلفّها · دوس عليها لمفاجأة">Drag to turn her around · tap her for a surprise</p>
         </div>
       </div>
       <a class="scroll-cue" href="#meet" aria-label="Scroll down"><span></span></a>
     </section>
 
-    <div class="marquee" aria-hidden="true">
+    <div class="marquee" aria-hidden="true" dir="ltr">
       <div class="track">
         <span>SMILE ✦ FLOSS ✦ SPARKLE ✦ <b lang="ar">ابتسامة</b> ✦ BRUSH ✦ SHINE ✦ <b lang="ar">راجية</b> ✦ FLOSS <i class="mk-dot">🐢</i> SMILE ✦&nbsp;</span>
         <span>SMILE ✦ FLOSS ✦ SPARKLE ✦ <b lang="ar">ابتسامة</b> ✦ BRUSH ✦ SHINE ✦ <b lang="ar">راجية</b> ✦ FLOSS <i class="mk-dot">🐢</i> SMILE ✦&nbsp;</span>
@@ -123,93 +193,115 @@
 
     <!-- ───────── Meet her ───────── -->
     <section class="section" id="meet">
-      <header class="sec-head" data-reveal>
-        <span class="kicker" lang="ar">تعرّف على راجية</span>
-        <h2>Meet Dr. Rajiea</h2>
-        <p>Six things everyone should know.</p>
+      <header class="sec-head">
+        <span class="kicker" lang="ar" data-ar="Meet Rajiea" data-ar-lang="en" data-reveal>تعرّف على راجية</span>
+        <h2 data-split data-ar="اتعرّف على د. راجية">Meet Dr. Rajiea</h2>
+        <p data-reveal data-ar="حاجات لازم الكل يعرفها.">A few things everyone should know.</p>
       </header>
-      <div class="facts">
-        <article class="fact" data-reveal style="--d:0">
-          <div class="fact-icon">✨</div>
-          <h3>Her name means hope</h3>
-          <p><span lang="ar">راجية</span> comes from <span lang="ar">رجاء</span> — “hope”. She lives up to it.</p>
+      <div class="bento">
+        <article class="id-card" id="idCard" data-reveal>
+          <div class="id-shine" aria-hidden="true"></div>
+          <div class="id-top"><span class="id-chip" aria-hidden="true"></span><span class="id-org" data-ar="مهندسة ابتسامات · رخصة رقم 0001">Smile Engineer · Licence 0001</span></div>
+          <div class="id-body">
+            <div class="id-photo" aria-hidden="true"><svg viewBox="0 0 64 64"><use href="#i-tooth"/></svg></div>
+            <div class="id-info">
+              <b data-ar="د. راجية">Dr. Rajiea</b>
+              <span lang="ar">راجية</span>
+              <dl>
+                <div><dt data-ar="المهنة">Role</dt><dd data-ar="دكتورة أسنان">Dentist</dd></div>
+                <div><dt data-ar="القوّة">Power</dt><dd data-ar="الابتسامات">Smiles</dd></div>
+                <div><dt data-ar="اللون">Colour</dt><dd data-ar="هوت بينك">Hot pink</dd></div>
+              </dl>
+            </div>
+          </div>
+          <div class="id-foot"><span class="id-bars" aria-hidden="true"></span><span data-ar="صالحة لكل الابتسامات">Valid for all smiles</span></div>
         </article>
         <article class="fact" data-reveal style="--d:1">
-          <div class="fact-icon">🦷</div>
-          <h3>Dentist by profession</h3>
-          <p>She spends her days protecting smiles, one tooth at a time.</p>
+          <div class="fact-icon">✨</div>
+          <h3 data-ar="اسمها معناه أمل">Her name means hope</h3>
+          <p data-ar="«راجية» جاية من «رجاء» — يعني أمل. وهي قدّها.">راجية comes from رجاء — “hope”. She lives up to it.</p>
         </article>
         <article class="fact" data-reveal style="--d:2">
-          <div class="fact-icon">🧕</div>
-          <h3>Hijabi, always elegant</h3>
-          <p>Graceful in a hijab, sharp in a white coat.</p>
+          <div class="fact-icon">🦷</div>
+          <h3 data-ar="دكتورة أسنان">Dentist by profession</h3>
+          <p data-ar="بتقضّي يومها تحمي الابتسامات، سنة سنة.">She spends her days protecting smiles, one tooth at a time.</p>
         </article>
         <article class="fact" data-reveal style="--d:3">
-          <div class="fact-icon">😁</div>
-          <h3>Superpower: smiles</h3>
-          <p>Making people smile is, quite literally, in her job description.</p>
+          <div class="fact-icon">🧕</div>
+          <h3 data-ar="محجّبة وشيك دايمًا">Hijabi, always elegant</h3>
+          <p data-ar="رقيقة بالطرحة، وحاسمة بالبالطو الأبيض.">Graceful in a hijab, sharp in a white coat.</p>
         </article>
         <article class="fact" data-reveal style="--d:4">
           <div class="fact-icon">🦠</div>
-          <h3>Arch-enemy: cavities</h3>
-          <p>Sugar bugs, beware. She’s on to you.</p>
+          <h3 data-ar="عدوّها: التسوّس">Arch-enemy: cavities</h3>
+          <p data-ar="يا جراثيم السكر، خلّوا بالكم. هي واخدة بالها منكم.">Sugar bugs, beware. She’s on to you.</p>
         </article>
         <article class="fact" data-reveal style="--d:5">
           <div class="fact-icon">📱</div>
-          <h3>Off duty</h3>
-          <p>Phone up, smile on — mirror selfies are an art. Try her City and Cozy outfits above.</p>
+          <h3 data-ar="بعد الشغل">Off duty</h3>
+          <p data-ar="الموبايل فوق والابتسامة شغّالة — سيلفي المراية فن. جرّب لبس الخروجة والبيتي فوق.">Phone up, smile on — mirror selfies are an art. Try her City and Cozy outfits above.</p>
         </article>
-      </div>
-      <div class="stats" data-reveal>
-        <div class="stat"><b data-count="32">0</b><span>teeth she could name in her sleep</span></div>
-        <div class="stat"><b data-count="2">0</b><span>minutes — the perfect brush</span></div>
-        <div class="stat"><b data-count="100" data-suffix="%">0</b><span>smile guaranteed</span></div>
+        <div class="stats" data-reveal>
+          <div class="stat"><b data-count="32">0</b><span data-ar="سنة تقدر تسمّيهم وهي نايمة">teeth she could name in her sleep</span></div>
+          <div class="stat"><b data-count="2">0</b><span data-ar="دقيقتين — الغسيل المثالي">minutes — the perfect brush</span></div>
+          <div class="stat"><b data-count="100" data-suffix="%">0</b><span data-ar="ابتسامة مضمونة">smile guaranteed</span></div>
+        </div>
       </div>
     </section>
 
+    <!-- ───────── Favourite things ───────── -->
+    <section class="section tinted" id="favs-sec">
+      <header class="sec-head">
+        <span class="kicker" lang="ar" data-ar="Her favourite things" data-ar-lang="en" data-reveal>حاجات بتحبها</span>
+        <h2 data-split data-ar="شوية من حاجاتها المفضّلة">A few of her favourite things</h2>
+        <p data-reveal data-ar="دوس على أي كارت — كلهم بيعملوا حاجة.">Tap a tile — every one of them does something.</p>
+      </header>
+      <div class="favs" id="favs"></div>
+    </section>
+
     <!-- ───────── Then & now ───────── -->
-    <section class="section tinted" id="then">
-      <header class="sec-head" data-reveal>
-        <span class="kicker" lang="ar">زمان والنهارده</span>
-        <h2>Then &amp; now</h2>
-        <p>Before the white coat, there was this smile.</p>
+    <section class="section" id="then">
+      <header class="sec-head">
+        <span class="kicker" lang="ar" data-ar="Then &amp; now" data-ar-lang="en" data-reveal>زمان والنهارده</span>
+        <h2 data-split data-ar="زمان والنهارده">Then &amp; now</h2>
+        <p data-reveal data-ar="قبل البالطو الأبيض، كانت الابتسامة دي.">Before the white coat, there was this smile.</p>
       </header>
       <div class="tn-wrap" data-reveal>
         <div class="tn-stage" id="babyStage">
-          <div class="stage-glow"></div>
+          <div class="portal small" aria-hidden="true"><i></i><i></i></div>
           <div class="bubble" id="babyBubble" role="status" aria-live="polite"></div>
-          <span class="tn-badge">Little Rajiea</span>
+          <span class="tn-badge" data-ar="راجية الصغيرة">Little Rajiea</span>
         </div>
         <div class="tn-copy">
-          <div class="tn-row"><span class="tn-tag">Then</span><p>Short brown hair, a navy dress with white trim, a toy in hand — and the biggest grin in the room.</p></div>
-          <div class="tn-row"><span class="tn-tag pink">Now</span><p>A hijab, a white coat and a giant toothbrush, protecting smiles for a living.</p></div>
-          <div class="tn-row"><span class="tn-tag brown">Always</span><p>The gold bracelet and that smile. Some things never change.</p></div>
-          <button type="button" class="btn btn-cream" id="babyGiggle">Make her giggle 🧸</button>
+          <div class="tn-row"><span class="tn-tag" data-ar="زمان">Then</span><p data-ar="شعر بني قصير، فستان كحلي بحواف بيضا، لعبة في إيدها — وأكبر ضحكة في الأوضة.">Short brown hair, a navy dress with white trim, a toy in hand — and the biggest grin in the room.</p></div>
+          <div class="tn-row"><span class="tn-tag pink" data-ar="النهارده">Now</span><p data-ar="طرحة، بالطو أبيض وفرشة سنان عملاقة، وشغلتها تحمي الابتسامات.">A hijab, a white coat and a giant toothbrush, protecting smiles for a living.</p></div>
+          <div class="tn-row"><span class="tn-tag brown" data-ar="دايمًا">Always</span><p data-ar="الأسورة الدهب والابتسامة دي. فيه حاجات مبتتغيّرش.">The gold bracelet and that smile. Some things never change.</p></div>
+          <button type="button" class="btn btn-glass" id="babyGiggle"><span data-ar="ضحّكها">Make her giggle</span> 🧸</button>
         </div>
       </div>
     </section>
 
     <!-- ───────── Myth or fact ───────── -->
-    <section class="section" id="tips">
-      <header class="sec-head" data-reveal>
-        <span class="kicker" lang="ar">نصايح للابتسامة</span>
-        <h2>Smile School</h2>
-        <p>Myth or fact? Make your guess and the card flips. Dentist-approved answers.</p>
+    <section class="section tinted" id="tips">
+      <header class="sec-head">
+        <span class="kicker" lang="ar" data-ar="Smile School" data-ar-lang="en" data-reveal>مدرسة الابتسامة</span>
+        <h2 data-split data-ar="مدرسة الابتسامة">Smile School</h2>
+        <p data-reveal data-ar="خرافة ولا حقيقة؟ خمّن والكارت هيتقلب. إجابات بموافقة دكتورة الأسنان.">Myth or fact? Make your guess and the card flips. Dentist-approved answers.</p>
       </header>
-      <div class="mf-score" data-reveal>Your score <b id="mfScore">0</b> / <span id="mfTotal">8</span></div>
+      <div class="mf-score" data-reveal><span data-ar="نتيجتك">Your score</span> <b id="mfScore">0</b> / <span id="mfTotal">8</span></div>
       <div class="mf-grid" id="mfGrid"></div>
     </section>
 
     <!-- ───────── Games ───────── -->
-    <section class="section tinted" id="games">
-      <header class="sec-head" data-reveal>
-        <span class="kicker" lang="ar">يلا نلعب</span>
-        <h2>Game time</h2>
-        <p>Win a prize, save some teeth.</p>
+    <section class="section" id="games">
+      <header class="sec-head">
+        <span class="kicker" lang="ar" data-ar="Game time" data-ar-lang="en" data-reveal>يلا نلعب</span>
+        <h2 data-split data-ar="وقت اللعب">Game time</h2>
+        <p data-reveal data-ar="اكسب جايزة، وانقذ شوية سنان.">Win a prize, save some teeth.</p>
       </header>
       <div class="tabs" role="tablist" data-reveal>
-        <button type="button" role="tab" id="tab-quiz" aria-controls="panel-quiz" aria-selected="true">🎓 The Rajiea Quiz</button>
-        <button type="button" role="tab" id="tab-zap" aria-controls="panel-zap" aria-selected="false">🦠 Germ Zapper</button>
+        <button type="button" role="tab" id="tab-quiz" aria-controls="panel-quiz" aria-selected="true" data-ar="🎓 كويز راجية">🎓 The Rajiea Quiz</button>
+        <button type="button" role="tab" id="tab-zap" aria-controls="panel-zap" aria-selected="false" data-ar="🦠 صايد الجراثيم">🦠 Germ Zapper</button>
         <span class="tab-ink" aria-hidden="true"></span>
       </div>
       <div class="game-card" data-reveal>
@@ -219,9 +311,9 @@
         <div class="panel" id="panel-zap" role="tabpanel" aria-labelledby="tab-zap" hidden>
           <div class="zap" id="zap">
             <div class="zap-hud">
-              <div>Score <b id="zScore">0</b></div>
-              <div class="zap-time"><span>Time</span><b id="zTime">30</b><i id="zBar"></i></div>
-              <div>Best <b id="zBest">0</b></div>
+              <div><span data-ar="النقط">Score</span> <b id="zScore">0</b></div>
+              <div class="zap-time"><span data-ar="الوقت">Time</span><b id="zTime">30</b><i id="zBar"></i></div>
+              <div><span data-ar="الأفضل">Best</span> <b id="zBest">0</b></div>
             </div>
             <div class="zap-board" id="zBoard"></div>
             <div class="zap-overlay" id="zOverlay"></div>
@@ -231,17 +323,17 @@
     </section>
 
     <!-- ───────── Brush along ───────── -->
-    <section class="section" id="brush">
-      <header class="sec-head" data-reveal>
-        <span class="kicker" lang="ar">يلا نغسل سناننا</span>
-        <h2>Brush along with Rajiea</h2>
-        <p>Two minutes, four zones, three surfaces each. Grab your brush — each finished session earns a sticker.</p>
+    <section class="section tinted" id="brush">
+      <header class="sec-head">
+        <span class="kicker" lang="ar" data-ar="Brush along" data-ar-lang="en" data-reveal>يلا نغسل سناننا</span>
+        <h2 data-split data-ar="اغسل سنانك مع راجية">Brush along with Rajiea</h2>
+        <p data-reveal data-ar="دقيقتين، أربع مناطق، وتلات أسطح لكل منطقة. هات فرشتك — وكل مرة تكمّلها تاخد ستيكر.">Two minutes, four zones, three surfaces each. Grab your brush — each finished session earns a sticker.</p>
       </header>
       <div class="brush-wrap" data-reveal>
         <div class="mouth-card">
-          <div class="zone-chips" id="bChips"><span>Top left</span><span>Top right</span><span>Bottom right</span><span>Bottom left</span></div>
-          <svg id="mouth" viewBox="0 0 400 330" role="img" aria-label="A smile split into four zones; the zone to brush lights up"></svg>
-          <p class="mouth-hint">Rub the little germs away as you go.</p>
+          <div class="zone-chips" id="bChips"><span data-ar="فوق شمال">Top left</span><span data-ar="فوق يمين">Top right</span><span data-ar="تحت يمين">Bottom right</span><span data-ar="تحت شمال">Bottom left</span></div>
+          <svg id="mouth" viewBox="0 0 400 330" role="img" aria-label="A smile split into four zones; the zone to brush lights up" data-ar-label="ابتسامة متقسّمة لأربع مناطق؛ المنطقة اللي عليها الدور بتنوّر"></svg>
+          <p class="mouth-hint" data-ar="امسح الجراثيم الصغيرة وإنت ماشي.">Rub the little germs away as you go.</p>
         </div>
         <div class="brush-side">
           <div class="timer">
@@ -251,33 +343,61 @@
             </svg>
             <div class="timer-text">
               <div class="time" id="bTime">2:00</div>
-              <div class="zone" id="bZone">Ready when you are</div>
+              <div class="zone" id="bZone" data-ar="جاهزين لما تكون جاهز">Ready when you are</div>
             </div>
           </div>
-          <p class="brush-tip" id="bTip">Tilt the brush 45° toward the gumline and use small, gentle circles.</p>
-          <div class="coach"><svg viewBox="0 0 64 64" aria-hidden="true"><use href="#i-tooth"/></svg><p id="bCoach" aria-live="polite">Two minutes, four zones. I’ll guide you.</p></div>
+          <p class="brush-tip" id="bTip" data-ar="ميّل الفرشة 45° ناحية اللثة واعمل دواير صغيرة وهادية.">Tilt the brush 45° toward the gumline and use small, gentle circles.</p>
+          <div class="coach"><svg viewBox="0 0 64 64" aria-hidden="true"><use href="#i-tooth"/></svg><p id="bCoach" aria-live="polite" data-ar="دقيقتين، أربع مناطق. وأنا معاك خطوة بخطوة.">Two minutes, four zones. I’ll guide you.</p></div>
           <div class="brush-btns">
-            <button type="button" class="btn btn-pink" id="bStart">Start brushing</button>
-            <button type="button" class="btn btn-cream" id="bDemo">20-second demo</button>
-            <button type="button" class="btn btn-ghost" id="bReset">Reset</button>
+            <button type="button" class="btn btn-pink" id="bStart" data-ar="ابدأ الغسيل">Start brushing</button>
+            <button type="button" class="btn btn-glass" id="bDemo" data-ar="ديمو 20 ثانية">20-second demo</button>
+            <button type="button" class="btn btn-ghost" id="bReset" data-ar="من الأول">Reset</button>
           </div>
           <div class="week-card">
-            <div class="week-head"><b>This week</b><span id="bStreak"></span></div>
+            <div class="week-head"><b data-ar="الأسبوع ده">This week</b><span id="bStreak"></span></div>
             <div class="week" id="bWeek"></div>
           </div>
         </div>
       </div>
     </section>
 
+    <!-- ───────── Notes for Rajiea ───────── -->
+    <section class="section" id="notes">
+      <header class="sec-head">
+        <span class="kicker" lang="ar" data-ar="Notes for Rajiea" data-ar-lang="en" data-reveal>رسايل لراجية</span>
+        <h2 data-split data-ar="سيبلها رسالة">Leave her a note</h2>
+        <p data-reveal data-ar="بتتقفل على جهازك قبل ما تتبعت — ومحدش يقدر يفتحها غير راجية.">Sealed on your device before it’s sent — only Rajiea can open it.</p>
+      </header>
+      <div class="notes-wrap" data-reveal>
+        <form class="note-form" id="noteForm" autocomplete="off">
+          <div class="nf-paper">
+            <label class="nf-field"><span data-ar="من">From</span><input name="from" maxlength="40" placeholder="Your name (optional)" data-ar-ph="اسمك (اختياري)" dir="auto"></label>
+            <label class="nf-field"><span data-ar="الرسالة">Note</span><textarea name="msg" maxlength="600" rows="5" placeholder="Say something nice…" data-ar-ph="قول حاجة حلوة…" dir="auto"></textarea></label>
+            <div class="nf-stickers" role="radiogroup" aria-label="Sticker" data-ar-label="ستيكر"></div>
+            <div class="nf-foot"><span class="nf-count">0/600</span><button class="btn btn-pink" type="submit"><span data-ar="ابعت">Send</span> ✈️</button></div>
+          </div>
+        </form>
+        <aside class="notes-side">
+          <div class="lock-card">
+            <div class="lock-icon" aria-hidden="true"><span>🔒</span></div>
+            <b data-ar="خصوصية من الأساس">Private by design</b>
+            <p data-ar="الرسالة بتتقفل بمفتاح راجية على جهازك قبل ما تتبعت. محدش تاني يقدر يقراها — ولا حتى اللي عامل الموقع.">Notes are locked with Rajiea’s key on your device before they travel. Nobody else can read them — not even whoever built this site.</p>
+          </div>
+          <p class="nf-status" aria-live="polite"></p>
+          <button type="button" class="btn btn-ghost" id="noteInbox"><span data-ar="راجية؟ اقري رسايلك">Rajiea? Read your notes</span> 🔑</button>
+        </aside>
+      </div>
+    </section>
+
     <!-- ───────── A little note ───────── -->
     <section class="section tinted note-sec" id="note">
-      <header class="sec-head" data-reveal>
-        <span class="kicker" lang="ar">رسالة صغيرة</span>
-        <h2>A little note</h2>
-        <p>Tap the envelope.</p>
+      <header class="sec-head">
+        <span class="kicker" lang="ar" data-ar="A little note" data-ar-lang="en" data-reveal>جواب صغير</span>
+        <h2 data-split data-ar="جواب صغير">A little note</h2>
+        <p data-reveal data-ar="دوس على الظرف.">Tap the envelope.</p>
       </header>
       <div class="env-wrap" data-reveal>
-        <button type="button" class="envelope" id="envelope" aria-expanded="false" aria-label="Open the letter">
+        <button type="button" class="envelope" id="envelope" aria-expanded="false" aria-label="Open the letter" data-ar-label="افتح الجواب">
           <span class="env-back"></span>
           <span class="letter" id="letter"></span>
           <span class="env-front"></span>
@@ -289,11 +409,12 @@
   </main>
 
   <footer class="foot">
+    <div class="foot-name" aria-hidden="true"><svg viewBox="0 0 600 170"><text x="300" y="132" text-anchor="middle">راجية</text></svg></div>
     <svg class="foot-tooth" id="footTooth" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-tooth"/></svg>
-    <p>Made with 🤍 for Rajiea · <span lang="ar">صُنع بحب لراجية</span></p>
+    <p data-ar-html="اتعمل بـ🤍 لراجية · &lt;span lang=&quot;en&quot;&gt;Made with love for Rajiea&lt;/span&gt;">Made with 🤍 for Rajiea · <span lang="ar">صُنع بحب لراجية</span></p>
     <p class="small">© 2026</p>
   </footer>
 
-  <script type="module" src="js/main.js"></script>
+  <script type="module" src="js/boot.js"></script>
 </body>
 </html>

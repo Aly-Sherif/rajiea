@@ -6,7 +6,6 @@
 export const CONFIG = {
   name: 'Rajiea',
   nameAr: 'راجية',
-  fromName: 'Aly',
 
   // The words that cycle after "Dentist ·" in the big title.
   taglines: [
@@ -85,7 +84,7 @@ export const CONFIG = {
     { icon: '🍰', title: 'A dessert night', note: 'Dentist-approved… mostly.' },
     { icon: '✨', title: 'One wish, granted', note: 'Within reason. Probably.' },
   ],
-  claimLine: 'Screenshot this and send it to Aly to claim 💌',
+  claimLine: 'Screenshot this to claim your prize 💌',
 
   // What Little Rajiea says when you tap her.
   babyLines: ['Hehe! 🧸', 'Again! Again!', 'Look at my bracelet ✨', 'One day I’ll be a dentist 🦷', 'Peekaboo! 👀'],
@@ -110,6 +109,6 @@ export const CONFIG = {
       'Thank you for every smile you fix — and every smile you cause.',
       'Keep shining. The world needs more people like you. ✨',
     ],
-    signoff: '— Aly',
+    signoff: 'With love 💌',
   },
 };

@@ -15,7 +15,7 @@
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@500;600;700;800&family=Fredoka:wght@500;600;700&family=Nunito:wght@500;600;700;800&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Aref+Ruqaa:wght@700&family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500;1,9..144,600&family=Nunito:wght@500;600;700;800&family=Tajawal:wght@500;700&display=swap">
   <link rel="stylesheet" href="css/style.css">
   <link rel="modulepreload" href="vendor/three.module.min.js">
 </head>
@@ -83,10 +83,13 @@
           <div class="controls">
             <div class="moves" role="group" aria-label="Make her move">
               <button type="button" data-move="wave"><span>👋</span>Wave</button>
-              <button type="button" data-move="jump"><span>🎉</span>Jump</button>
+              <button type="button" data-move="jump"><span>✨</span>Jump</button>
               <button type="button" data-move="spin"><span>🌀</span>Spin</button>
               <button type="button" data-move="dance"><span>🎶</span>Dance</button>
               <button type="button" data-move="wink"><span>😉</span>Wink</button>
+              <button type="button" data-move="floss"><span>🪥</span>Floss</button>
+              <button type="button" data-move="candy"><span>🍬</span>Candy?</button>
+              <button type="button" data-move="sneeze"><span>🤧</span>Sneeze</button>
             </div>
             <div class="controls-row">
               <div class="swatches" role="radiogroup" aria-label="Hijab colour">
@@ -113,8 +116,8 @@
 
     <div class="marquee" aria-hidden="true">
       <div class="track">
-        <span>SMILE ✦ FLOSS ✦ SPARKLE ✦ <b lang="ar">ابتسامة</b> ✦ BRUSH ✦ SHINE ✦ <b lang="ar">راجية</b> ✦&nbsp;</span>
-        <span>SMILE ✦ FLOSS ✦ SPARKLE ✦ <b lang="ar">ابتسامة</b> ✦ BRUSH ✦ SHINE ✦ <b lang="ar">راجية</b> ✦&nbsp;</span>
+        <span>SMILE ✦ FLOSS ✦ SPARKLE ✦ <b lang="ar">ابتسامة</b> ✦ BRUSH ✦ SHINE ✦ <b lang="ar">راجية</b> ✦ FLOSS <i class="farouk">🐢</i> SMILE ✦&nbsp;</span>
+        <span>SMILE ✦ FLOSS ✦ SPARKLE ✦ <b lang="ar">ابتسامة</b> ✦ BRUSH ✦ SHINE ✦ <b lang="ar">راجية</b> ✦ FLOSS <i class="farouk">🐢</i> SMILE ✦&nbsp;</span>
       </div>
     </div>
 
@@ -232,11 +235,13 @@
       <header class="sec-head" data-reveal>
         <span class="kicker" lang="ar">يلا نغسل سناننا</span>
         <h2>Brush along with Rajiea</h2>
-        <p>Two minutes, four zones, thirty seconds each. Grab your brush and press start.</p>
+        <p>Two minutes, four zones, three surfaces each. Grab your brush — each finished session earns a sticker.</p>
       </header>
       <div class="brush-wrap" data-reveal>
         <div class="mouth-card">
+          <div class="zone-chips" id="bChips"><span>Top left</span><span>Top right</span><span>Bottom right</span><span>Bottom left</span></div>
           <svg id="mouth" viewBox="0 0 400 330" role="img" aria-label="A smile split into four zones; the zone to brush lights up"></svg>
+          <p class="mouth-hint">Rub the little germs away as you go.</p>
         </div>
         <div class="brush-side">
           <div class="timer">
@@ -246,13 +251,19 @@
             </svg>
             <div class="timer-text">
               <div class="time" id="bTime">2:00</div>
-              <div class="zone" id="bZone">Ready?</div>
+              <div class="zone" id="bZone">Ready when you are</div>
             </div>
           </div>
-          <p class="brush-tip" id="bTip">Small, gentle circles — like you’re polishing pearls.</p>
+          <p class="brush-tip" id="bTip">Tilt the brush 45° toward the gumline and use small, gentle circles.</p>
+          <div class="coach"><svg viewBox="0 0 64 64" aria-hidden="true"><use href="#i-tooth"/></svg><p id="bCoach" aria-live="polite">Two minutes, four zones. I’ll guide you.</p></div>
           <div class="brush-btns">
             <button type="button" class="btn btn-pink" id="bStart">Start brushing</button>
-            <button type="button" class="btn btn-cream" id="bReset">Reset</button>
+            <button type="button" class="btn btn-cream" id="bDemo">20-second demo</button>
+            <button type="button" class="btn btn-ghost" id="bReset">Reset</button>
+          </div>
+          <div class="week-card">
+            <div class="week-head"><b>This week</b><span id="bStreak"></span></div>
+            <div class="week" id="bWeek"></div>
           </div>
         </div>
       </div>

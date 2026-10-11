@@ -76,7 +76,7 @@ function faceFrame(F, center, radius, tube, mat, sy = 1) {
     let lo = 0, hi = 1;
     for (let it = 0; it < 30; it++) { const m = (lo + hi) / 2; if (at(m).diff > 0) lo = m; else hi = m; }
     const p = at(lo);
-    const pt = new THREE.Vector3(p.u, F.c.y + p.v, p.ze);
+    const pt = new THREE.Vector3(p.u * jaw(p.v, F.b), F.c.y + p.v, p.ze);
     const n = pt.clone().sub(center).normalize();
     pts.push(pt.addScaledVector(n, tube * 0.35));
   }
@@ -176,7 +176,7 @@ function badgeTexture(text) {
     g.roundRect(8, 8, 496, 176, 60);
     g.fill();
     g.fillStyle = '#ffffff';
-    g.font = '700 84px Fredoka, "Baloo Bhaijaan 2", sans-serif';
+    g.font = '600 80px Fraunces, Georgia, serif';
     g.textAlign = 'center';
     g.textBaseline = 'middle';
     g.fillText(text, 256, 100);
@@ -365,12 +365,23 @@ function createStage(container, { dist = 10.4, camY = 2.05, lookY = 1.62, podium
   let lastX = 0, moved = 0;
   const raycaster = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
+  let holdTimer = 0, held = false;
+  const castAt = (e) => {
+    const rect = canvas.getBoundingClientRect();
+    ndc.set(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
+    raycaster.setFromCamera(ndc, camera);
+    return raycaster;
+  };
   canvas.addEventListener('pointerdown', (e) => {
     turn.dragging = true;
     lastX = e.clientX;
     moved = 0;
     turn.vel = 0;
+    held = false;
     canvas.setPointerCapture?.(e.pointerId);
+    const ev = { clientX: e.clientX, clientY: e.clientY };
+    clearTimeout(holdTimer);
+    holdTimer = setTimeout(() => { if (moved < 6 && turn.dragging) { held = true; stage.onHold?.(castAt(ev)); } }, 750);
   });
   canvas.addEventListener('pointermove', (e) => {
     if (!turn.dragging) return;
@@ -386,11 +397,9 @@ function createStage(container, { dist = 10.4, camY = 2.05, lookY = 1.62, podium
     if (!turn.dragging) return;
     turn.dragging = false;
     canvas.style.cursor = '';
-    if (moved > 6 || e.type === 'pointercancel') return;
-    const rect = canvas.getBoundingClientRect();
-    ndc.set(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
-    raycaster.setFromCamera(ndc, camera);
-    stage.onTap?.(raycaster);
+    clearTimeout(holdTimer);
+    if (held || moved > 6 || e.type === 'pointercancel') return;
+    stage.onTap?.(castAt(e));
   };
   canvas.addEventListener('pointerup', endDrag);
   canvas.addEventListener('pointercancel', endDrag);
@@ -479,65 +488,86 @@ const POSES = {
   hold: { r: REST, l: { sx: -0.3, sz: 0.1, ex: -1.4 } },
 };
 
+// a gentle jaw: the face narrows a little toward the chin
+const jaw = (v, b) => 1 - 0.16 * Math.pow(Math.max(0, -v / b), 1.6);
+
 function humanFace(head, F, r) {
-  const sclera = std(0xfffdfa, { roughness: 0.3 });
+  const sclera = std(0xfffcf8, { roughness: 0.3 });
   const irisMat = std(0x5e331b, { roughness: 0.25 });
-  const pupilMat = std(0x160b06, { roughness: 0.2 });
+  const pupilMat = std(0x140a05, { roughness: 0.2 });
   const shine = new THREE.MeshBasicMaterial({ color: 0xffffff });
   const lash = std(0x22140c, { roughness: 0.5 });
+  const crease = std(0xe6b39b, { roughness: 0.7 });
+  const lowLash = new THREE.MeshBasicMaterial({ color: 0x8a5a48, transparent: true, opacity: 0.55, depthWrite: false });
   const browMat = std(0x3b2416, { roughness: 0.7 });
-  const blush = new THREE.MeshBasicMaterial({ color: COL.pinkSoft, transparent: true, opacity: 0.4, depthWrite: false });
-  const freckle = new THREE.MeshBasicMaterial({ color: COL.freckle, transparent: true, opacity: 0.6, depthWrite: false });
+  const blush = new THREE.MeshBasicMaterial({ color: COL.pinkSoft, transparent: true, opacity: 0.32, depthWrite: false });
+  const freckle = new THREE.MeshBasicMaterial({ color: COL.freckle, transparent: true, opacity: 0.55, depthWrite: false });
+  const onFace = (obj, u, v, lift) => placeOnFace(F, obj, u * jaw(v, F.b), v, lift);
   const eyes = [], happyEyes = [];
   for (const side of [-1, 1]) {
-    const socket = placeOnFace(F, new THREE.Group(), 0.088 * side, 0.03, -r * 0.2);
+    const socket = onFace(new THREE.Group(), 0.1 * side, 0.028, -r * 0.2);
     head.add(socket);
     const lid = new THREE.Group();
     socket.add(lid);
-    add(lid, new THREE.SphereGeometry(r, 24, 16), sclera, [0, 0, 0], [0, 0, 0], [1.35, 0.85, 0.42], false);
+    add(lid, new THREE.SphereGeometry(r, 24, 16), sclera, [0, 0, 0], [0, 0, 0], [1.4, 0.78, 0.4], false);
     const look = new THREE.Group();
     lid.add(look);
-    add(look, new THREE.SphereGeometry(r * 0.62, 20, 14), irisMat, [0, 0, r * 0.3], [0, 0, 0], [1, 1, 0.3], false);
-    add(look, new THREE.SphereGeometry(r * 0.3, 16, 10), pupilMat, [0, 0, r * 0.44], [0, 0, 0], [1, 1, 0.3], false);
-    add(look, new THREE.SphereGeometry(r * 0.14, 10, 8), shine, [r * 0.2, r * 0.22, r * 0.52], [0, 0, 0], [1, 1, 0.4], false);
-    add(lid, new THREE.TorusGeometry(r * 1.32, r * 0.14, 6, 24, PI * 0.86), lash, [0, -r * 0.05, r * 0.1], [0, 0, PI * 0.07], [1, 0.68, 1], false);
-    add(lid, new THREE.CapsuleGeometry(r * 0.1, r * 0.45, 4, 8), lash, [r * 1.3 * side, r * 0.3, r * 0.1], [0, 0, -1.0 * side], [1, 1, 1], false);
+    add(look, new THREE.SphereGeometry(r * 0.58, 20, 14), irisMat, [0, -r * 0.02, r * 0.28], [0, 0, 0], [1, 1, 0.3], false);
+    add(look, new THREE.SphereGeometry(r * 0.27, 16, 10), pupilMat, [0, -r * 0.02, r * 0.41], [0, 0, 0], [1, 1, 0.3], false);
+    add(look, new THREE.SphereGeometry(r * 0.12, 10, 8), shine, [r * 0.18, r * 0.18, r * 0.5], [0, 0, 0], [1, 1, 0.4], false);
+    add(look, new THREE.SphereGeometry(r * 0.06, 8, 6), shine, [-r * 0.16, -r * 0.18, r * 0.5], [0, 0, 0], [1, 1, 0.4], false);
+    add(lid, new THREE.TorusGeometry(r * 1.36, r * 0.15, 6, 24, PI * 0.86), lash, [0, -r * 0.1, r * 0.08], [0, 0, PI * 0.07], [1, 0.62, 1], false);
+    add(lid, new THREE.CapsuleGeometry(r * 0.09, r * 0.42, 4, 8), lash, [r * 1.34 * side, r * 0.24, r * 0.08], [0, 0, -1.05 * side], [1, 1, 1], false);
+    add(lid, new THREE.TorusGeometry(r * 1.3, r * 0.05, 4, 20, PI * 0.6), lowLash, [0, r * 0.12, r * 0.12], [0, 0, PI * 1.2], [1, 0.55, 1], false);
     eyes.push({ look, lid });
-    const happy = add(socket, new THREE.TorusGeometry(r * 1.1, r * 0.16, 8, 24, PI), lash, [0, -r * 0.3, r * 0.3], [0, 0, 0], [1, 0.7, 1], false);
+    const crs = add(socket, new THREE.TorusGeometry(r * 1.45, r * 0.07, 4, 24, PI * 0.7), crease, [0, r * 0.12, r * 0.05], [0, 0, PI * 0.15], [1, 0.62, 1], false);
+    const happy = add(socket, new THREE.TorusGeometry(r * 1.1, r * 0.15, 8, 24, PI), lash, [0, -r * 0.3, r * 0.3], [0, 0, 0], [1, 0.6, 1], false);
     happy.visible = false;
-    happyEyes.push(happy);
-    const brow = placeOnFace(F, new THREE.Group(), 0.092 * side, 0.098, 0.002);
-    add(brow, new THREE.TorusGeometry(r * 1.6, r * 0.22, 6, 20, PI * 0.62), browMat, [0, -r * 0.6, 0], [0, 0, PI * 0.19 - 0.1 * side], [1, 0.42, 0.5], false);
+    happyEyes.push({ happy, crs });
+    const brow = onFace(new THREE.Group(), 0.104 * side, 0.1, 0.002);
+    add(brow, new THREE.TorusGeometry(r * 1.65, r * 0.2, 6, 20, PI * 0.6), browMat, [0, -r * 0.62, 0], [0, 0, PI * 0.2 - 0.12 * side], [1, 0.4, 0.5], false);
     head.add(brow);
-    head.add(placeOnFace(F, new THREE.Mesh(new THREE.CircleGeometry(r * 1.3, 24), blush), 0.15 * side, -0.065, 0.004));
-    for (const [u, v] of [[0.045, -0.025], [0.062, -0.04], [0.078, -0.022], [0.092, -0.048], [0.055, -0.058]]) {
-      head.add(placeOnFace(F, new THREE.Mesh(new THREE.CircleGeometry(r * 0.11, 8), freckle), u * side, v, 0.003));
+    head.add(onFace(new THREE.Mesh(new THREE.CircleGeometry(r * 1.35, 24), blush), 0.15 * side, -0.07, 0.004));
+    for (const [u, v] of [[0.04, -0.03], [0.058, -0.045], [0.075, -0.026], [0.09, -0.05], [0.052, -0.062], [0.11, -0.035]]) {
+      head.add(onFace(new THREE.Mesh(new THREE.CircleGeometry(r * 0.1, 8), freckle), u * side, v, 0.003));
     }
   }
-  head.add(placeOnFace(F, new THREE.Mesh(new THREE.SphereGeometry(r * 0.6, 16, 12), std(COL.skinShade)), 0, -0.048, -r * 0.25));
-  const mouth = placeOnFace(F, new THREE.Group(), 0, -0.135, 0.002);
+  // nose: soft bridge, rounded tip, small nostrils
+  const bridge = onFace(new THREE.Group(), 0, -0.012, -r * 0.08);
+  add(bridge, new THREE.CapsuleGeometry(r * 0.22, r * 1.0, 4, 8), std(COL.skin, { roughness: 0.55 }), [0, 0, 0], [0, 0, 0], [1, 1, 0.7], false);
+  head.add(bridge);
+  const tip = onFace(new THREE.Group(), 0, -0.058, -r * 0.2);
+  add(tip, new THREE.SphereGeometry(r * 0.55, 16, 12), std(COL.skin, { roughness: 0.55 }), [0, 0, 0], [0, 0, 0], [1.05, 0.85, 0.8], false);
+  for (const s of [-1, 1]) add(tip, new THREE.SphereGeometry(r * 0.13, 8, 6), std(0xc98a7a), [s * r * 0.3, -r * 0.33, r * 0.2], [0, 0, 0], [1.2, 0.6, 0.5], false);
+  head.add(tip);
+  // lips: a cupid's bow, a fuller lower lip and a soft smile line
+  const mouth = onFace(new THREE.Group(), 0, -0.142, 0.001);
   head.add(mouth);
-  const lipMat = std(0xe0909b, { roughness: 0.45 });
+  const upperLip = std(0xd47a87, { roughness: 0.4 });
+  const lowerLip = std(0xe0939d, { roughness: 0.35 });
   const smile = new THREE.Group();
-  add(smile, new THREE.TorusGeometry(r * 1.5, r * 0.16, 8, 28, PI), std(0xc4606f, { roughness: 0.4 }), [0, r * 0.5, 0], [0, 0, PI], [1, 0.6, 0.5], false);
-  add(smile, new THREE.SphereGeometry(r * 0.9, 16, 10), lipMat, [0, -r * 0.55, -r * 0.1], [0, 0, 0], [1.45, 0.5, 0.35], false);
+  for (const s of [-1, 1]) add(smile, new THREE.SphereGeometry(r * 0.72, 16, 10), upperLip, [s * r * 0.42, r * 0.12, -r * 0.08], [0, 0, -0.18 * s], [1.15, 0.42, 0.35], false);
+  add(smile, new THREE.SphereGeometry(r * 0.9, 16, 10), lowerLip, [0, -r * 0.5, -r * 0.06], [0, 0, 0], [1.5, 0.55, 0.4], false);
+  add(smile, new THREE.TorusGeometry(r * 1.55, r * 0.06, 6, 24, PI * 0.9), std(0xa84b5c), [0, r * 1.1, r * 0.08], [0, 0, PI * 1.05], [1, 0.75, 1], false);
   mouth.add(smile);
   const grin = new THREE.Group();
-  add(grin, new THREE.CircleGeometry(r * 1.6, 28, PI, PI), std(0x7a2236, { roughness: 0.6 }), [0, r * 0.4, 0.001], [0, 0, 0], [1, 0.9, 1], false);
-  add(grin, new THREE.BoxGeometry(r * 2.5, r * 0.45, 0.002), std(0xffffff, { roughness: 0.3 }), [0, r * 0.2, 0.002], [0, 0, 0], [1, 1, 1], false);
-  add(grin, new THREE.SphereGeometry(r * 0.9, 16, 10), lipMat, [0, -r * 1.15, -r * 0.1], [0, 0, 0], [1.5, 0.45, 0.35], false);
+  add(grin, new THREE.CircleGeometry(r * 1.55, 28, PI, PI), std(0x7a2236, { roughness: 0.6 }), [0, r * 0.25, 0.001], [0, 0, 0], [1, 0.85, 1], false);
+  add(grin, new THREE.BoxGeometry(r * 2.4, r * 0.42, 0.002), std(0xffffff, { roughness: 0.3 }), [0, r * 0.06, 0.002], [0, 0, 0], [1, 1, 1], false);
+  for (const s of [-1, 1]) add(grin, new THREE.SphereGeometry(r * 0.72, 16, 10), upperLip, [s * r * 0.5, r * 0.4, -r * 0.08], [0, 0, -0.1 * s], [1.2, 0.35, 0.35], false);
+  add(grin, new THREE.SphereGeometry(r * 0.9, 16, 10), lowerLip, [0, -r * 1.25, -r * 0.08], [0, 0, 0], [1.55, 0.45, 0.35], false);
   grin.visible = false;
   mouth.add(grin);
   let expression = 'smile';
   return {
     eyes,
+    blush,
     setExpression(name) {
       if (expression === name) return;
       expression = name;
       smile.visible = name === 'smile';
       grin.visible = name !== 'smile';
       eyes.forEach((e) => (e.lid.visible = name !== 'happy'));
-      happyEyes.forEach((h) => (h.visible = name === 'happy'));
+      happyEyes.forEach((h) => { h.happy.visible = name === 'happy'; h.crs.visible = name !== 'happy'; });
     },
   };
 }
@@ -669,12 +699,21 @@ export function createRajiea(container, { bubble, lines = [], badge = 'Dr. Rajie
   head.position.set(0, 2.66, 0);
   body.add(head);
   const HC = new THREE.Vector3(0, 0.36, 0);
-  add(head, new THREE.SphereGeometry(0.36, 48, 32), hijabMat, HC.toArray(), [0, 0, 0], [1, 1.1, 1]);
-  const FACE = { c: new THREE.Vector3(0, 0.33, 0.17), a: 0.25, b: 0.32, d: 0.25 };
-  add(head, new THREE.SphereGeometry(1, 48, 32), skin, FACE.c.toArray(), [0, 0, 0], [FACE.a, FACE.b, FACE.d]);
-  head.add(faceFrame(FACE, HC, 0.36, 0.028, hijabMat, 1.1));
-  add(head, new THREE.SphereGeometry(0.018, 12, 10), new THREE.MeshPhysicalMaterial({ color: 0xfff6ee, roughness: 0.15, clearcoat: 1 }), [-0.25, 0.25, 0.25]);
-  const face = humanFace(head, FACE, 0.036);
+  add(head, new THREE.SphereGeometry(0.34, 48, 32), hijabMat, HC.toArray(), [0, 0, 0], [1, 1.1, 1]);
+  const FACE = { c: new THREE.Vector3(0, 0.315, 0.16), a: 0.255, b: 0.33, d: 0.25 };
+  const faceGeo = new THREE.SphereGeometry(1, 56, 40);
+  {
+    const pos = faceGeo.attributes.position;
+    for (let k = 0; k < pos.count; k++) {
+      const y = pos.getY(k);
+      if (y < 0) { pos.setX(k, pos.getX(k) * jaw(y * FACE.b, FACE.b)); pos.setZ(k, pos.getZ(k) * (1 - 0.05 * y * y)); }
+    }
+    faceGeo.computeVertexNormals();
+  }
+  add(head, faceGeo, skin, FACE.c.toArray(), [0, 0, 0], [FACE.a, FACE.b, FACE.d]);
+  head.add(faceFrame(FACE, HC, 0.34, 0.02, hijabMat, 1.1));
+  add(head, new THREE.SphereGeometry(0.016, 12, 10), new THREE.MeshPhysicalMaterial({ color: 0xfff6ee, roughness: 0.15, clearcoat: 1 }), [-0.24, 0.24, 0.24]);
+  const face = humanFace(head, FACE, 0.04);
 
   // invisible hit area so taps on her slim figure are easy
   const hit = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 3.5, 12), new THREE.MeshBasicMaterial());
@@ -688,7 +727,7 @@ export function createRajiea(container, { bubble, lines = [], badge = 'Dr. Rajie
     ['spark', -0.75, 3.85, 0.3, 0.85], ['spark', 1.95, 0.6, -0.8, 0.85], ['spark', -2.0, 2.0, -1.2, 0.85], ['spark', 0.95, 0.35, 0.9, 0.85], ['spark', -0.85, 0.3, 1.1, 0.85],
   ]);
 
-  const DUR = { wave: 2.2, jump: 1.0, spin: 1.3, dance: 3.2, wink: 1.1 };
+  const DUR = { wave: 2.2, jump: 1.0, spin: 1.3, dance: 3.2, wink: 1.1, floss: 3.2, candy: 2.4, sneeze: 1.7, dizzy: 2.6, blush: 2.4 };
   let outfit = 'clinic';
   const cur = { r: { ...REST }, l: { ...POSES.clinic.l } };
   let action = null, idleTimer = 0, lookX = 0, lookY = 0;
@@ -735,6 +774,7 @@ export function createRajiea(container, { bubble, lines = [], badge = 'Dr. Rajie
     r.sz += Math.sin(time * 1.6) * 0.02;
     l.sz += Math.sin(time * 1.6 + 1) * 0.02;
     let hop = 0, squash = 1, extraYaw = 0, sway = Math.sin(time * 0.8) * 0.012, tilt = 0, expr = 'smile', wink = false;
+    let hipX = 0, lean = 0, nod = 0, squint = 1, blushing = 0;
     const blend = (arm, to, w) => { for (const j in to) arm[j] = lerp(arm[j], to[j], w); };
 
     if (action) {
@@ -768,6 +808,33 @@ export function createRajiea(container, { bubble, lines = [], badge = 'Dr. Rajie
           tilt = Math.sin(b) * 0.12 * w; expr = Math.sin(a * 2.2) > 0 ? 'happy' : 'grin'; break;
         }
         case 'wink': { wink = p > 0.1 && p < 0.75; tilt = 0.12 * windowed(p, 0.25); expr = 'grin'; break; }
+        case 'floss': {
+          const b = a * 7, w = windowed(p, 0.1), sw = Math.sin(b);
+          blend(r, { sx: 0.45 * Math.cos(b), sz: 0.1 - 0.55 * sw, ex: -0.05 }, w);
+          blend(l, { sx: -0.45 * Math.cos(b), sz: 0.1 + 0.55 * sw, ex: -0.05 }, w);
+          hipX = -0.07 * sw * w; tilt = 0.05 * sw * w; expr = 'grin'; break;
+        }
+        case 'candy': {
+          const w = windowed(p, 0.15);
+          blend(r, { sx: -0.55, sz: -0.05, ex: -2.35 }, w); blend(l, { sx: -0.55, sz: -0.05, ex: -2.35 }, w);
+          lean = -0.09 * w; tilt = Math.sin(a * 30) * 0.03 * w; expr = 'grin'; break;
+        }
+        case 'sneeze': {
+          if (p < 0.55) { const q = p / 0.55; nod = -0.28 * q; squint = 1 - 0.75 * q; }
+          else { const q = (p - 0.55) / 0.45; nod = 0.22 * Math.sin(Math.min(1, q * 3) * PI * 0.5) * (1 - q); hop = 0.05 * Math.sin(q * PI); squint = 0.3 + 0.7 * q; }
+          blend(r, { sx: -0.4, sz: -0.05, ex: -2.1 }, windowed(p, 0.2) * 0.8);
+          expr = p > 0.55 ? 'grin' : 'smile'; break;
+        }
+        case 'dizzy': {
+          const w = windowed(p, 0.15);
+          tilt = Math.sin(a * 6) * 0.16 * w; nod = Math.cos(a * 6) * 0.1 * w; sway = Math.sin(a * 3) * 0.05 * w;
+          blend(r, { sz: 0.6, ex: -0.3 }, w); blend(l, { sz: 0.6, ex: -0.3 }, w); expr = 'happy'; break;
+        }
+        case 'blush': {
+          const w = windowed(p, 0.2);
+          blend(r, { sx: -0.35, sz: -0.12, ex: -1.0 }, w); blend(l, { sx: -0.35, sz: -0.12, ex: -1.0 }, w);
+          tilt = 0.15 * w; blushing = w; expr = 'happy'; break;
+        }
       }
       if (action.t >= action.dur) action = null;
     }
@@ -779,19 +846,20 @@ export function createRajiea(container, { bubble, lines = [], badge = 'Dr. Rajie
     armR.elbow.rotation.set(r.ex, 0, -r.ez);
     armL.shoulder.rotation.set(l.sx, 0, l.sz);
     armL.elbow.rotation.set(l.ex, 0, l.ez);
-    body.position.y = hop;
+    body.position.set(hipX, hop, 0);
     body.scale.set(1 / Math.sqrt(squash), squash, 1 / Math.sqrt(squash));
-    body.rotation.z = sway;
+    body.rotation.set(lean, 0, sway);
+    face.blush.opacity = 0.32 + blushing * 0.5;
     scarf.children.forEach((t, i) => (t.rotation.x = -0.08 - Math.sin(time * 1.8 + i) * 0.03 - hop * 0.3));
     char.rotation.y = stage.stepTurn(dt) + extraYaw;
     lookX = damp(lookX, stage.pointer.x, 5, dt);
     lookY = damp(lookY, stage.pointer.y, 5, dt);
-    head.rotation.set(-lookY * 0.14, lookX * 0.45, tilt + sway * 0.5 - lookX * 0.04);
+    head.rotation.set(-lookY * 0.14 + nod, lookX * 0.45, tilt + sway * 0.5 - lookX * 0.04);
     char.updateMatrixWorld(true);
     upright(brush); upright(cup); upright(phone);
     const open = blink(dt);
     face.eyes.forEach((e, i) => {
-      e.lid.scale.y = wink && i === 1 ? 0.08 : open;
+      e.lid.scale.y = (wink && i === 1 ? 0.08 : open) * squint;
       e.look.position.set(lookX * 0.008, lookY * 0.004, 0);
     });
     floats.update(time, dt, lookX);
@@ -803,13 +871,16 @@ export function createRajiea(container, { bubble, lines = [], badge = 'Dr. Rajie
   const api = {
     play, say, randomLine, setHijab, setOutfit,
     toggleClose() { close = !close; stage.setView(close ? CLOSE : FULL); return close; },
-    onPoke: null, onPop: null,
+    onPoke: null, onPop: null, onHold: null,
+  };
+  stage.onHold = (raycaster) => {
+    if (raycaster.intersectObject(char, true).length) api.onHold?.();
   };
   stage.onTap = (raycaster) => {
     const kind = floats.hit(raycaster);
     if (kind) { api.onPop?.(kind); return; }
     if (raycaster.intersectObject(char, true).length) {
-      play(['jump', 'spin', 'dance', 'wave', 'wink'][Math.floor(Math.random() * 5)]);
+      play(['jump', 'spin', 'dance', 'wave', 'wink', 'floss'][Math.floor(Math.random() * 6)]);
       say(randomLine());
       api.onPoke?.();
     }

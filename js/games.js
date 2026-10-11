@@ -14,31 +14,59 @@ const mascot = () => `
     <g class="f f-oops"><circle cx="24" cy="26" r="3.4" fill="#3f2617"/><circle cx="40" cy="26" r="3.4" fill="#3f2617"/><circle cx="32" cy="35" r="2.6" fill="#6e1a33"/></g>
   </svg>`;
 
+const shuffle = (arr) => {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+};
+
+// Pick a fresh random set: avoid last game's questions, include some tough ones.
+function pickQuestions(bank, len, minHard = 3) {
+  let last = [];
+  try { last = JSON.parse(localStorage.getItem('rajiea-quiz-last') || '[]'); } catch {}
+  const ids = bank.map((_, i) => i);
+  const fresh = shuffle(ids.filter((i) => !last.includes(i)));
+  const pool = fresh.length >= len ? fresh : [...fresh, ...shuffle(ids.filter((i) => last.includes(i)))];
+  const pick = pool.slice(0, len);
+  const spareHard = pool.slice(len).filter((i) => bank[i].hard);
+  let hardCount = pick.filter((i) => bank[i].hard).length;
+  for (let k = pick.length - 1; k >= 0 && hardCount < minHard && spareHard.length; k--) {
+    if (!bank[pick[k]].hard) { pick[k] = spareHard.shift(); hardCount++; }
+  }
+  localStorage.setItem('rajiea-quiz-last', JSON.stringify(pick));
+  return shuffle(pick).map((i) => {
+    const q = bank[i];
+    const options = shuffle(q.options);
+    return { ...q, options, answer: options.indexOf(q.answer) };
+  });
+}
+
 // ════════════════ Quiz ════════════════
-export function initQuiz(root, cfg) {
-  const Q = cfg.quiz;
-  const n = Q.length;
-  const pass = Math.min(cfg.passMark, n);
-  let i = 0, score = 0;
+export function initQuiz(root, cfg, hooks = {}) {
+  const len = Math.min(cfg.quizLength || 10, cfg.quizBank.length);
+  const pass = Math.min(cfg.passMark, len);
+  let Q = [], i = 0, score = 0;
+  const n = len;
 
   const setMood = (m) => { const el = root.querySelector('.mascot'); if (el) el.dataset.mood = m; };
+  const begin = () => { Q = pickQuestions(cfg.quizBank, len); i = 0; score = 0; ask(); };
 
   function start() {
     root.innerHTML = `
       <div class="q-screen q-start">
         ${mascot()}
         <h3>How well do you know ${esc(cfg.name)}?</h3>
-        <p>${n} questions. Get ${pass} right to win a prize 🎁</p>
+        <p>${n} random questions — a new set every time, with a few tough ones. Get ${pass} right to win a prize.</p>
         <button type="button" class="btn btn-pink" data-go>Start the quiz</button>
       </div>`;
-    root.querySelector('[data-go]').onclick = () => { sfx.click(); i = 0; score = 0; ask(); };
+    root.querySelector('[data-go]').onclick = () => { sfx.click(); begin(); };
   }
 
   function ask() {
     const q = Q[i];
     root.innerHTML = `
       <div class="q-screen q-play">
-        <div class="q-top"><span>Question ${i + 1} of ${n}</span><span class="q-stars">⭐ ${score}</span></div>
+        <div class="q-top"><span>Question ${i + 1} of ${n}${q.hard ? ' <em class="q-hard">Tough one</em>' : ''}</span><span class="q-stars">${score} correct</span></div>
         <div class="q-bar"><i style="width:${(i / n) * 100}%"></i></div>
         <div class="q-body">${mascot()}<h3 class="q-text">${esc(q.q)}</h3></div>
         <div class="q-options">
@@ -59,12 +87,12 @@ export function initQuiz(root, cfg) {
     opts.forEach((b) => (b.disabled = true));
     opts[q.answer].classList.add('right');
     if (!right) opts[k].classList.add('wrong');
-    if (right) { score++; sfx.ding(); confettiFrom(opts[k], { count: 18, spread: 0.5 }); } else sfx.buzz();
+    if (right) { score++; sfx.ding(); confettiFrom(opts[k], { count: 14, spread: 0.45 }); } else sfx.buzz();
     setMood(right ? 'yay' : 'oops');
-    root.querySelector('.q-stars').textContent = `⭐ ${score}`;
+    root.querySelector('.q-stars').textContent = `${score} correct`;
     root.querySelector('.q-bar i').style.width = `${((i + 1) / n) * 100}%`;
     const why = root.querySelector('.q-why');
-    why.innerHTML = `<b>${right ? 'Correct!' : 'Not quite.'}</b> ${esc(q.why || '')}`;
+    why.innerHTML = `<b>${right ? 'Correct.' : 'Not quite.'}</b> ${esc(q.why || '')}`;
     why.classList.add('show');
     const next = root.querySelector('.q-next');
     next.hidden = false;
@@ -73,23 +101,24 @@ export function initQuiz(root, cfg) {
 
   function result() {
     const won = score >= pass;
+    if (score === n) hooks.onPerfect?.();
     if (!won) {
       root.innerHTML = `
         <div class="q-screen q-result">
           ${mascot()}
           <h3>You scored ${score} / ${n}</h3>
-          <p>So close! You need ${pass} to win. Brush up on ${esc(cfg.name)} and try again 💪</p>
-          <button type="button" class="btn btn-pink" data-again>Try again</button>
+          <p>Close! You need ${pass} to win. The next round brings a whole new set of questions.</p>
+          <button type="button" class="btn btn-pink" data-again>Try a new set</button>
         </div>`;
       setMood('oops');
-      root.querySelector('[data-again]').onclick = () => { sfx.click(); i = 0; score = 0; ask(); };
+      root.querySelector('[data-again]').onclick = () => { sfx.click(); begin(); };
       return;
     }
     const prize = cfg.prizes[Math.floor(Math.random() * cfg.prizes.length)];
     root.innerHTML = `
       <div class="q-screen q-result win">
-        <h3>You scored ${score} / ${n} 🎉</h3>
-        <p>You really know ${esc(cfg.name)}! Scratch the card to reveal your prize.</p>
+        <h3>You scored ${score} / ${n}</h3>
+        <p>${score === n ? 'A perfect score — impressive.' : `You really know ${esc(cfg.name)}.`} Scratch the card to reveal your prize.</p>
         <div class="scratch">
           <div class="prize">
             <div class="prize-icon">${prize.icon}</div>
@@ -99,10 +128,10 @@ export function initQuiz(root, cfg) {
           </div>
           <canvas class="scratch-cover" aria-label="Scratch card — rub to reveal"></canvas>
         </div>
-        <button type="button" class="btn btn-cream" data-again>Play again</button>
+        <button type="button" class="btn btn-cream" data-again>Play a new set</button>
       </div>`;
     sfx.tada();
-    confettiFrom(root.querySelector('h3'), { count: 90 });
+    confettiFrom(root.querySelector('h3'), { count: 80 });
     root.querySelector('[data-again]').onclick = () => { sfx.click(); start(); };
     scratchCard(root.querySelector('.scratch'));
   }
@@ -128,7 +157,7 @@ function scratchCard(wrap) {
   for (let y = 12; y < h; y += 26) for (let x = (y / 26) % 2 ? 12 : 25; x < w; x += 26) { g.beginPath(); g.arc(x, y, 2.2, 0, Math.PI * 2); g.fill(); }
   g.fillStyle = '#fff';
   g.textAlign = 'center';
-  g.font = '700 22px Fredoka, sans-serif';
+  g.font = '600 22px Fraunces, Georgia, serif';
   g.fillText('Scratch here ✨', w / 2, h / 2 + 4);
   g.font = '600 13px Nunito, sans-serif';
   g.fillText('use your finger or mouse', w / 2, h / 2 + 26);
@@ -190,7 +219,7 @@ const cellTooth = `
     <g class="ct-sad"><circle cx="24" cy="27" r="2.6" fill="#3f2617"/><circle cx="40" cy="27" r="2.6" fill="#3f2617"/><path d="M27 36q5-5 10 0" fill="none" stroke="#3f2617" stroke-width="2.4" stroke-linecap="round"/><circle class="ct-spot" cx="45" cy="19" r="4.5"/></g>
   </svg>`;
 
-export function initZapper(root) {
+export function initZapper(root, hooks = {}) {
   const board = root.querySelector('#zBoard');
   const overlay = root.querySelector('#zOverlay');
   const $score = root.querySelector('#zScore');
@@ -216,7 +245,7 @@ export function initZapper(root) {
     overlay.innerHTML = `
       <div class="zo-card">
         <h3>Germ Zapper</h3>
-        <p>Sugar bugs are attacking! Tap the <b>germs</b> before they make cavities.<br>But <b>don’t tap the candy</b> 🍬 — that’s −2.</p>
+        <p>Tap the <b>germs</b> before they cause cavities.<br>Leave the <b>candy</b> alone — tapping it costs 2 points.</p>
         <button type="button" class="btn btn-pink" data-play>Start · ${LEN} seconds</button>
       </div>`;
     overlay.hidden = false;
@@ -305,12 +334,13 @@ export function initZapper(root) {
     clearTimeout(spawnTimer);
     cancelAnimationFrame(raf);
     cells.forEach((_, k) => clear(k));
+    hooks.onScore?.(score);
     const newBest = score > best;
     if (newBest) { best = score; localStorage.setItem('rajiea-zap-best', best); $best.textContent = best; }
     const rank = score >= 22 ? ['🏆', 'Certified Smile Guardian', 'Dr. Rajiea would hire you on the spot.']
       : score >= 14 ? ['🦷', 'Great brushing!', 'The sugar bugs are scared of you now.']
       : score >= 7 ? ['🪥', 'Not bad!', 'A little more flossing and you’ll be unstoppable.']
-      : ['🦠', 'The germs won this round', 'Quick — give it another go!'];
+      : ['🦠', 'The germs won this round', 'One more try?'];
     overlay.innerHTML = `
       <div class="zo-card">
         <div class="zo-icon">${rank[0]}</div>
@@ -338,140 +368,218 @@ export function initZapper(root) {
   };
 }
 
-// ════════════════ Brush-along timer ════════════════
-export function initBrush(svg, ui) {
+// ════════════════ Brush-along ════════════════
+const DAY = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+export function initBrush(svg, ui, hooks = {}) {
   const ZONES = ['Top left', 'Top right', 'Bottom right', 'Bottom left'];
-  const TIPS = [
-    'Small, gentle circles — like you’re polishing pearls.',
-    'Tilt the brush toward the gumline, about 45°.',
-    'Don’t forget the inside surfaces and the very back teeth.',
-    'Last zone! Then give your tongue a quick brush too.',
+  const STEPS = ['Outer surfaces', 'Inner surfaces', 'Chewing surfaces'];
+  const STEP_TIPS = [
+    'Tilt the brush 45° toward the gumline and use small, gentle circles.',
+    'Now the inside — hold the brush upright for the front teeth.',
+    'Short back-and-forth strokes across the tops.',
   ];
-  const ZONE_SEC = 30;
   const NS = 'http://www.w3.org/2000/svg';
 
-  // Draw the mouth and two arches of teeth
   svg.innerHTML = `
-    <ellipse cx="200" cy="165" rx="188" ry="152" fill="#ff9cc4"/>
-    <ellipse cx="200" cy="165" rx="168" ry="132" fill="#8e2442"/>
-    <ellipse cx="200" cy="232" rx="88" ry="42" fill="#ff7a9c"/>
-    <path d="M200 205v40" stroke="#e05b80" stroke-width="3" stroke-linecap="round"/>
+    <ellipse cx="200" cy="165" rx="188" ry="152" fill="#f7b3c9"/>
+    <ellipse cx="200" cy="165" rx="168" ry="132" fill="#7e2440"/>
+    <ellipse cx="200" cy="232" rx="88" ry="42" fill="#e4718f"/>
+    <path d="M200 205v40" stroke="#c9587a" stroke-width="3" stroke-linecap="round"/>
     <g id="teeth"></g>
+    <g id="germs"></g>
     <g id="sparkles"></g>
     <g id="brushG" opacity="0">
-      <g id="brushInner">
-        <rect x="-8" y="-150" width="16" height="130" rx="8" fill="#ff3d8b"/>
-        <rect x="-13" y="-22" width="26" height="44" rx="7" fill="#fff" stroke="#5b3a26" stroke-width="2"/>
-        <rect x="-10" y="-18" width="20" height="36" rx="3" fill="#bfe6ff"/>
-        <g class="foam"><circle cx="-18" cy="-6" r="6" fill="#fff"/><circle cx="18" cy="4" r="5" fill="#fff"/><circle cx="-12" cy="14" r="4" fill="#fff"/><circle cx="14" cy="-14" r="3.5" fill="#fff"/></g>
-      </g>
+      <rect x="-8" y="-150" width="16" height="130" rx="8" fill="#ff3d8b"/>
+      <rect x="-13" y="-22" width="26" height="44" rx="7" fill="#fff" stroke="#5b3a26" stroke-width="2"/>
+      <rect x="-10" y="-18" width="20" height="36" rx="3" fill="#bfe6ff"/>
+      <g class="foam"><circle cx="-18" cy="-6" r="6" fill="#fff"/><circle cx="18" cy="4" r="5" fill="#fff"/><circle cx="-12" cy="14" r="4" fill="#fff"/><circle cx="14" cy="-14" r="3.5" fill="#fff"/></g>
     </g>`;
   const teethG = svg.querySelector('#teeth');
+  const germG = svg.querySelector('#germs');
   const sparkG = svg.querySelector('#sparkles');
+  const brushG = svg.querySelector('#brushG');
   const zoneTeeth = [[], [], [], []];
-  const zoneCenter = [];
+  const toothPos = [];
   const arch = (cx, cy, rx, ry, a0, a1, count, upper) => {
     for (let k = 0; k < count; k++) {
       const a = ((a0 + ((a1 - a0) * k) / (count - 1)) * Math.PI) / 180;
       const x = cx + rx * Math.cos(a), y = cy + ry * Math.sin(a);
       const mid = Math.abs(k - (count - 1) / 2);
-      const w = mid < 1.5 ? 26 : mid < 3.5 ? 23 : 25;
-      const h = mid < 1.5 ? 36 : 32;
+      const w = mid < 1.5 ? 26 : mid < 3.5 ? 23 : 25, h = mid < 1.5 ? 36 : 32;
       const rect = document.createElementNS(NS, 'rect');
-      rect.setAttribute('x', -w / 2);
-      rect.setAttribute('y', -h / 2);
-      rect.setAttribute('width', w);
-      rect.setAttribute('height', h);
-      rect.setAttribute('rx', 8);
-      rect.setAttribute('class', 'tt');
-      const deg = (a * 180) / Math.PI + 90;
-      rect.setAttribute('transform', `translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${deg.toFixed(1)})`);
+      Object.entries({ x: -w / 2, y: -h / 2, width: w, height: h, rx: 8, class: 'tt' }).forEach(([k2, v]) => rect.setAttribute(k2, v));
+      rect.setAttribute('transform', `translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${((a * 180) / Math.PI + 90).toFixed(1)})`);
       teethG.appendChild(rect);
       const zone = upper ? (x < 200 ? 0 : 1) : x >= 200 ? 2 : 3;
       zoneTeeth[zone].push(rect);
+      toothPos.push({ x, y, zone });
     }
   };
   arch(200, 178, 140, 122, 194, 346, 14, true);
   arch(200, 152, 128, 108, 16, 164, 14, false);
-  zoneCenter[0] = { x: 105, y: 92, rot: -35 };
-  zoneCenter[1] = { x: 295, y: 92, rot: 35 };
-  zoneCenter[2] = { x: 290, y: 232, rot: 145 };
-  zoneCenter[3] = { x: 110, y: 232, rot: -145 };
+  const ZC = [{ x: 105, y: 92, rot: -35 }, { x: 295, y: 92, rot: 35 }, { x: 290, y: 232, rot: 145 }, { x: 110, y: 232, rot: -145 }];
 
-  const brushG = svg.querySelector('#brushG');
+  // little plaque germs sitting on some teeth
+  let germs = [];
+  function placeGerms() {
+    germG.innerHTML = '';
+    germs = [];
+    const spots = toothPos.map((p, k) => ({ ...p, k })).sort(() => Math.random() - 0.5).slice(0, 18);
+    for (const p of spots) {
+      const g = document.createElementNS(NS, 'g');
+      g.setAttribute('class', 'pg');
+      g.setAttribute('transform', `translate(${p.x.toFixed(1)} ${p.y.toFixed(1)})`);
+      g.innerHTML = '<g class="pg-in"><circle r="8.5" class="pg-b"/><circle cx="-3" cy="-1.5" r="1.6" fill="#2a1810"/><circle cx="3" cy="-1.5" r="1.6" fill="#2a1810"/><path d="M-3 3q3 2 6 0" stroke="#2a1810" stroke-width="1.3" fill="none" stroke-linecap="round"/></g>';
+      germG.appendChild(g);
+      germs.push({ el: g, zone: p.zone, x: p.x, y: p.y, gone: false });
+    }
+    germs.forEach((g) => (g.order = Math.random()));
+  }
+  function pop(g, byHand) {
+    if (g.gone) return;
+    g.gone = true;
+    g.el.classList.add('pop');
+    sparkleAt(g.x, g.y);
+    if (byHand) sfx.pop();
+    setTimeout(() => g.el.remove(), 500);
+  }
+  function sparkleAt(x, y, delay = 0) {
+    const s = document.createElementNS(NS, 'text');
+    s.textContent = '✦';
+    s.setAttribute('x', x);
+    s.setAttribute('y', y);
+    s.setAttribute('class', 'tw');
+    s.style.animationDelay = `${delay}ms`;
+    sparkG.appendChild(s);
+    setTimeout(() => s.remove(), 1600 + delay);
+  }
+
+  // rub germs away with a finger or the mouse
+  let rubbing = false;
+  const rub = (e) => {
+    const el = document.elementFromPoint(e.clientX, e.clientY)?.closest?.('.pg');
+    const g = el && germs.find((x) => x.el === el);
+    if (g) pop(g, true);
+  };
+  svg.addEventListener('pointerdown', (e) => { rubbing = true; rub(e); });
+  svg.addEventListener('pointermove', (e) => { if (rubbing || e.pointerType === 'mouse') rub(e); });
+  addEventListener('pointerup', () => (rubbing = false));
+
+  // weekly sticker chart
+  const load = () => { try { return JSON.parse(localStorage.getItem('rajiea-brush') || '{}'); } catch { return {}; } };
+  function drawWeek() {
+    const log = load();
+    const today = new Date();
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+    ui.week.innerHTML = ['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, k) => {
+      const date = new Date(monday);
+      date.setDate(monday.getDate() + k);
+      const e = log[DAY(date)] || {};
+      const isToday = DAY(date) === DAY(today);
+      return `<div class="wd${isToday ? ' today' : ''}"><span>${d}</span><i class="${e.am ? 'on' : ''}" title="Morning">☀️</i><i class="${e.pm ? 'on' : ''}" title="Night">🌙</i></div>`;
+    }).join('');
+    let streak = 0;
+    const d = new Date(today);
+    if (!log[DAY(d)]) d.setDate(d.getDate() - 1);
+    while (log[DAY(d)]) { streak++; d.setDate(d.getDate() - 1); }
+    ui.streak.textContent = streak ? `${streak}-day streak — keep it going.` : 'Finish a full 2 minutes to earn your first sticker.';
+  }
+  function award() {
+    const log = load();
+    const key = DAY();
+    const slot = new Date().getHours() < 15 ? 'am' : 'pm';
+    log[key] = { ...(log[key] || {}), [slot]: true };
+    localStorage.setItem('rajiea-brush', JSON.stringify(log));
+    drawWeek();
+    return slot;
+  }
+
   const ring = ui.ring;
   const C = 2 * Math.PI * 52;
   ring.style.strokeDasharray = C;
-
-  let state = 'idle', elapsed = 0, last = 0, raf = 0, zone = -1;
-
+  let state = 'idle', demo = false, elapsed = 0, last = 0, raf = 0, zone = -1, step = -1, halfSaid = false;
+  const zoneSec = () => (demo ? 5 : 30);
+  const total = () => zoneSec() * 4;
   const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+  const coach = (t) => { ui.coach.textContent = t; ui.coach.parentElement.classList.remove('nudge'); void ui.coach.offsetWidth; ui.coach.parentElement.classList.add('nudge'); };
 
   function paint() {
-    const total = ZONE_SEC * 4;
-    const p = Math.min(1, elapsed / total);
+    const p = Math.min(1, elapsed / total());
     ring.style.strokeDashoffset = C * (1 - p);
-    ui.time.textContent = fmt(Math.ceil(total - elapsed));
-    const z = Math.min(3, Math.floor(elapsed / ZONE_SEC));
+    ui.time.textContent = fmt(Math.ceil(total() - elapsed));
+    const z = Math.min(3, Math.floor(elapsed / zoneSec()));
+    const zp = (elapsed - z * zoneSec()) / zoneSec();
     zoneTeeth.forEach((list, k) => {
-      const zp = k < z ? 1 : k === z && state !== 'idle' ? (elapsed - k * ZONE_SEC) / ZONE_SEC : 0;
-      const clean = state === 'done' ? 1 : zp;
+      const clean = state === 'done' || k < z ? 1 : k === z && state !== 'idle' ? zp : 0;
       list.forEach((r) => {
-        r.style.fill = `color-mix(in srgb, #ffffff ${Math.round(clean * 100)}%, #f2dfae)`;
+        r.style.fill = `color-mix(in srgb, #ffffff ${Math.round(clean * 100)}%, #efdcae)`;
         r.classList.toggle('active', k === z && state === 'running');
       });
     });
-    if (z !== zone && state === 'running') {
-      if (zone >= 0) { sfx.ding(); sparkle(zone); }
-      zone = z;
-      ui.zone.textContent = `${ZONES[z]} · ${z + 1}/4`;
-      ui.tip.textContent = TIPS[z];
+    ui.chips.forEach((c, k) => { c.classList.toggle('on', k === z && state !== 'idle' && state !== 'done'); c.classList.toggle('done', state === 'done' || k < z); });
+    if (state === 'running') {
+      // germs in the active zone disappear as the zone progresses
+      const mine = germs.filter((g) => g.zone === z && !g.gone).sort((a, b) => a.order - b.order);
+      const shouldBeGone = germs.filter((g) => g.zone === z).length * Math.min(1, zp * 1.15);
+      const goneNow = germs.filter((g) => g.zone === z && g.gone).length;
+      if (goneNow < Math.floor(shouldBeGone) && mine[0]) pop(mine[0]);
+      const s = Math.min(2, Math.floor(zp * 3));
+      if (z !== zone) {
+        if (zone >= 0) { sfx.ding(); zoneTeeth[zone].forEach((r, k) => { if (k % 2 === 0) { const m = r.getAttribute('transform').match(/translate\(([-\d.]+) ([-\d.]+)\)/); sparkleAt(m[1], m[2], k * 40); } }); coach(`Lovely. Now ${ZONES[z].toLowerCase()}.`); }
+        zone = z;
+        step = -1;
+      }
+      if (s !== step) {
+        step = s;
+        ui.zone.textContent = `${ZONES[z]} · ${STEPS[s]}`;
+        ui.tip.textContent = STEP_TIPS[s];
+        if (s > 0) sfx.key();
+      }
+      if (!halfSaid && p >= 0.5) { halfSaid = true; coach('Halfway there ✨'); }
     }
-    const c = zoneCenter[Math.max(0, z)];
+    const c = ZC[Math.max(0, z)];
     const t = performance.now() / 1000;
     const scrub = state === 'running' ? Math.sin(t * 18) * 9 : 0;
-    brushG.setAttribute('transform', `translate(${c.x} ${c.y}) rotate(${c.rot}) translate(${scrub} 0)`);
+    brushG.setAttribute('transform', `translate(${c.x} ${c.y}) rotate(${c.rot + (step === 2 ? 90 : 0)}) translate(${scrub} 0)`);
     brushG.setAttribute('opacity', state === 'running' || state === 'paused' ? 1 : 0);
-  }
-
-  function sparkle(z) {
-    zoneTeeth[z].forEach((r, k) => {
-      if (k % 2) return;
-      const m = r.getAttribute('transform').match(/translate\(([-\d.]+) ([-\d.]+)\)/);
-      const s = document.createElementNS(NS, 'text');
-      s.textContent = '✦';
-      s.setAttribute('x', m[1]);
-      s.setAttribute('y', m[2]);
-      s.setAttribute('class', 'tw');
-      s.style.animationDelay = `${k * 40}ms`;
-      sparkG.appendChild(s);
-      setTimeout(() => s.remove(), 1600);
-    });
   }
 
   function loop(now) {
     if (state !== 'running') return;
     elapsed += Math.min(0.1, (now - last) / 1000);
     last = now;
-    if (elapsed >= ZONE_SEC * 4) {
-      elapsed = ZONE_SEC * 4;
-      finish();
-      return;
-    }
+    if (elapsed >= total()) { elapsed = total(); finish(); return; }
     paint();
     raf = requestAnimationFrame(loop);
   }
 
   function finish() {
     state = 'done';
-    sparkle(3);
+    germs.forEach((g) => pop(g));
     paint();
     ui.time.textContent = '0:00';
-    ui.zone.textContent = 'All done! ✨';
-    ui.tip.textContent = 'Sparkly clean! Now spit — don’t rinse — so the fluoride keeps working 💧';
+    ui.zone.textContent = 'All done';
+    ui.tip.textContent = 'Spit, don’t rinse — the fluoride keeps working for a while.';
     ui.start.textContent = 'Brush again';
     sfx.tada();
-    confettiFrom(svg, { count: 120 });
+    confettiFrom(svg, { count: 90 });
+    if (demo) coach('That was the quick demo. The real thing is 2 minutes.');
+    else { const slot = award(); coach(slot === 'am' ? 'Morning sticker earned ☀️' : 'Night sticker earned 🌙'); hooks.onComplete?.(); }
+  }
+
+  function begin(isDemo) {
+    cancelAnimationFrame(raf);
+    demo = isDemo;
+    elapsed = 0; zone = -1; step = -1; halfSaid = false;
+    placeGerms();
+    state = 'running';
+    ui.start.textContent = 'Pause';
+    coach(isDemo ? 'Quick demo — 5 seconds per zone.' : 'Let’s go. Start top left, outer surfaces.');
+    sfx.click();
+    last = performance.now();
+    raf = requestAnimationFrame(loop);
   }
 
   ui.start.addEventListener('click', () => {
@@ -483,23 +591,28 @@ export function initBrush(svg, ui) {
       paint();
       return;
     }
-    if (state === 'done' || state === 'idle') { elapsed = 0; zone = -1; }
-    state = 'running';
-    ui.start.textContent = 'Pause';
-    sfx.click();
-    last = performance.now();
-    raf = requestAnimationFrame(loop);
+    if (state === 'paused') {
+      state = 'running';
+      ui.start.textContent = 'Pause';
+      last = performance.now();
+      raf = requestAnimationFrame(loop);
+      return;
+    }
+    begin(false);
   });
+  ui.demo.addEventListener('click', () => begin(true));
   ui.reset.addEventListener('click', () => {
     cancelAnimationFrame(raf);
-    state = 'idle';
-    elapsed = 0;
-    zone = -1;
+    state = 'idle'; elapsed = 0; zone = -1; step = -1;
+    placeGerms();
     ui.start.textContent = 'Start brushing';
-    ui.zone.textContent = 'Ready?';
-    ui.tip.textContent = TIPS[0];
+    ui.zone.textContent = 'Ready when you are';
+    ui.tip.textContent = STEP_TIPS[0];
+    coach('Two minutes, four zones. I’ll guide you.');
     sfx.click();
     paint();
   });
+  placeGerms();
+  drawWeek();
   paint();
 }

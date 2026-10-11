@@ -48,6 +48,11 @@ export const sfx = {
   boop: () => tone({ freq: 300, to: 520, dur: 0.1, type: 'sine', vol: 0.16 }),
   giggle: () => [880, 1046, 932, 1175, 1046].forEach((f, i) => tone({ freq: f, to: f * 1.15, dur: 0.07, type: 'sine', vol: 0.13, delay: i * 0.075 })),
   key: () => tone({ freq: 520, dur: 0.05, type: 'triangle', vol: 0.08 }),
+  kiss: () => { tone({ freq: 1400, to: 500, dur: 0.12, type: 'sine', vol: 0.18 }); tone({ freq: 900, to: 1800, dur: 0.06, type: 'sine', vol: 0.12, delay: 0.1 }); },
+  party: () => {
+    const notes = [523, 659, 784, 659, 880, 784, 659, 523, 587, 740, 880, 740, 988, 880, 740, 587];
+    notes.forEach((f, i) => { tone({ freq: f, dur: 0.16, type: 'triangle', vol: 0.12, delay: i * 0.2 }); if (i % 2 === 0) tone({ freq: 110, to: 60, dur: 0.12, type: 'sine', vol: 0.22, delay: i * 0.2 }); });
+  },
 };
 
 // ── Confetti ──
@@ -92,7 +97,8 @@ function tick() {
     g.fillStyle = p.color;
     g.translate(p.x, p.y);
     g.rotate(p.rot);
-    if (p.shape === 'heart') heart(0, -p.size / 2, p.size);
+    if (p.shape === 'emoji') { g.font = `${p.size * 2}px serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(p.text, 0, 0); }
+    else if (p.shape === 'heart') heart(0, -p.size / 2, p.size);
     else if (p.shape === 'dot') { g.beginPath(); g.arc(0, 0, p.size / 2.4, 0, Math.PI * 2); g.fill(); }
     else g.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2);
     g.restore();
@@ -100,7 +106,7 @@ function tick() {
   rafId = pieces.length ? requestAnimationFrame(tick) : 0;
 }
 
-export function confetti({ x = innerWidth / 2, y = innerHeight / 2, count = 120, spread = 1 } = {}) {
+export function confetti({ x = innerWidth / 2, y = innerHeight / 2, count = 120, spread = 1, emoji = null } = {}) {
   if (!g || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   for (let i = 0; i < count; i++) {
     const a = Math.random() * Math.PI * 2;
@@ -113,7 +119,8 @@ export function confetti({ x = innerWidth / 2, y = innerHeight / 2, count = 120,
       vr: (Math.random() - 0.5) * 0.3,
       size: 7 + Math.random() * 8,
       color: COLORS[(Math.random() * COLORS.length) | 0],
-      shape: Math.random() < 0.22 ? 'heart' : Math.random() < 0.5 ? 'dot' : 'rect',
+      shape: emoji ? 'emoji' : Math.random() < 0.22 ? 'heart' : Math.random() < 0.5 ? 'dot' : 'rect',
+      text: emoji ? emoji[(Math.random() * emoji.length) | 0] : '',
       life: 140 + Math.random() * 60,
     });
   }
@@ -145,4 +152,46 @@ export function sparkleTrail() {
     live++;
     s.addEventListener('animationend', () => { s.remove(); live--; });
   }, { passive: true });
+}
+
+// ── Soft music loop for the story (its own switch, separate from sound effects) ──
+export function startMusic() {
+  const a = audio();
+  if (!a) return { stop() {} };
+  const out = a.createGain();
+  out.gain.value = 0.0001;
+  out.gain.exponentialRampToValueAtTime(0.9, a.currentTime + 1.2);
+  out.connect(a.destination);
+  const chords = [[261.6, 329.6, 392, 493.9], [220, 261.6, 329.6, 392], [174.6, 220, 261.6, 329.6], [196, 246.9, 293.7, 392]];
+  let step = 0;
+  const note = (f, t, len, vol, type = 'triangle') => {
+    const o = a.createOscillator(), g = a.createGain();
+    o.type = type;
+    o.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.03);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+    o.connect(g).connect(out);
+    o.start(t);
+    o.stop(t + len + 0.05);
+  };
+  const tick = () => {
+    const t = a.currentTime + 0.05;
+    const chord = chords[Math.floor(step / 8) % chords.length];
+    const order = [0, 1, 2, 3, 2, 1, 2, 3];
+    note(chord[order[step % 8]] * 2, t, 0.9, 0.035);
+    if (step % 8 === 0) note(chord[0] / 2, t, 2.4, 0.05, 'sine');
+    step++;
+  };
+  tick();
+  const id = setInterval(tick, 330);
+  return {
+    stop() {
+      clearInterval(id);
+      out.gain.cancelScheduledValues(a.currentTime);
+      out.gain.setValueAtTime(Math.max(out.gain.value, 0.0001), a.currentTime);
+      out.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + 0.6);
+      setTimeout(() => out.disconnect(), 800);
+    },
+  };
 }

@@ -217,6 +217,9 @@ html.known .gate:not(.open) { display: none; }
   transition: background 0.25s, transform 0.25s var(--ease-back);
 }
 .gate-ask:hover { background: rgba(255, 46, 136, 0.3); transform: translateY(-2px); }
+.gate-go { margin-top: 2px; padding: 6px 10px; border: 0; background: none; color: rgba(255, 255, 255, 0.72); font: inherit; font-weight: 700; font-size: 13px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.gate-go[hidden] { display: none; }
+.gate-go:hover { color: #fff; }
 .gate-ask:active { transform: scale(0.96); }
 @media (max-height: 740px) { .gate-clock p:last-child, .gate-sub { display: none; } .gate-mark { width: 46px; height: 46px; } .gate-mark svg { width: 40px; height: 40px; } }
 @media (max-height: 620px) { .gate-clock { display: none; } }

@@ -329,7 +329,7 @@ const FAV_FX = {
   capp: { emoji: ['☕', '🤎'], say: t('Extra foam, please ☕', 'Ra8wa zyada law sama7t ☕'), move: 'matcha' },
   tira: { emoji: ['🍰', '☕'], say: t('Okay… one bite 🙈', 'Khalas… 7etta so8ayara bas 🙈'), move: 'candy' },
   roz: { emoji: ['🍮', '✨'], say: t('The golden top is mine 🍮', 'El wesh el dahaby bta3y 🍮'), move: 'candy' },
-  tawouk: { emoji: ['🥙', '🛵'], say: t('Is it here yet? 😅', 'Lessa mawselsh? 😅'), move: 'wave' },
+  tawouk: { emoji: ['🥙', '✨'], say: t('Shish tawouk? Always a yes 🥙', 'Shish tawouk? Dayman aywa 🥙'), move: 'jump' },
   pink: { emoji: ['💗', '💖', '🩷'], say: t('Hot pink is a personality 💗', 'El hot pink shakhseya 💗'), move: 'spin' },
   snap: { emoji: ['📸', '✨'], say: t('Say cheese 📸', 'Ool cheese 📸'), move: 'selfie' },
 };
@@ -478,7 +478,7 @@ const WORDS = [
   { id: 'tamer', re: /tamer|تامر/, run: () => { rajiea?.play('dance'); rajiea?.say(t('Nagm El Geel 🎤', 'Nagm el Geel 🎤'), 3000); confetti({ count: 50, emoji: ['🎤', '🎶', '⭐', '🎵'] }); sfx.party(); } },
   { id: 'cafe', re: /matcha|macha|cappuccino|cappucino|kabtshino|ماتشا|كابتشينو|كابوتشينو/, run: () => { rajiea?.play('matcha'); rajiea?.say(t('Matcha or cappuccino? Both ☕🍵', 'Matcha walla cappuccino? El etneen ☕🍵'), 3000); confetti({ x: innerWidth / 2, y: -20, count: 50, emoji: ['🍵', '☕'] }); } },
   { id: 'sweet', re: /tiramisu|roz|rice pudding|تيراميسو|رز بلبن|رز باللبن/, run: () => { rajiea?.play('candy'); rajiea?.say(t('Okay… one bite 🙈', 'Khalas… 7etta so8ayara bas 🙈'), 3000); confetti({ x: innerWidth / 2, y: -20, count: 50, emoji: ['🍰', '🍮'] }); } },
-  { id: 'tawouk', re: /tawouk|tawook|ta2ook|tawo2|dahan|طاووق|الدهان|الدهّان/, run: () => { rajiea?.play('wave'); rajiea?.say(t('Is the order here yet? 😅', 'El order lessa mawselsh? 😅'), 3200); confetti({ x: innerWidth / 2, y: -20, count: 36, emoji: ['🥙', '🛵'] }); } },
+  { id: 'tawouk', re: /tawouk|tawook|ta2ook|tawo2|dahan|طاووق|الدهان|الدهّان/, run: () => { rajiea?.play('jump'); rajiea?.say(t('Shish tawouk? Always a yes 🥙', 'Shish tawouk? Dayman aywa 🥙'), 3200); confetti({ x: innerWidth / 2, y: -20, count: 36, emoji: ['🥙', '✨'] }); } },
 ];
 const fired = new Set();
 function wordEggs(text, fromBox = false) {

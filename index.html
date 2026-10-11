@@ -23,7 +23,7 @@
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <script>
     try {
-      if (localStorage.getItem('rajiea-pass')) document.documentElement.classList.add('known');
+      if (sessionStorage.getItem('rajiea-session')) document.documentElement.classList.add('known');
       if (localStorage.getItem('rajiea-lang') === 'ar') document.documentElement.lang = 'ar-Latn';
     } catch (e) {}
   </script>
@@ -64,6 +64,7 @@
         </div>
         <p class="gate-msg" id="gateMsg" aria-live="polite"></p>
         <a class="gate-ask" id="gateAsk" href="https://wa.me/" target="_blank" rel="noopener"><span aria-hidden="true">💬</span> <span data-ar="Otlob el code men Rajiea">Ask Rajiea for the code</span></a>
+        <button type="button" class="gate-go" id="gateGo" hidden data-ar="Kammel 3ala site Rajiea →">Continue to Rajiea’s site →</button>
       </div>
     </div>
   </div>

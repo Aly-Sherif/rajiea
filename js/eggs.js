@@ -28,7 +28,7 @@ export const EGGS = [
   E('tamer', 'Nagm El Geel', 'Nagm el Geel', 'Type the name of her favourite singer.', 'Ekteb esm motrebha el mofaddal.'),
   E('cafe', 'Café order', 'Talab el café', 'Type her favourite drink.', 'Ekteb mashrobha el mofaddal.'),
   E('sweet', 'Dessert first', 'El 7elw el awel', 'Type her favourite dessert.', 'Ekteb el 7elw elly bt7ebbo.'),
-  E('tawouk', 'Still waiting', 'Lessa mestanyeen', 'Type her favourite meal.', 'Ekteb akletha el mofaddala.'),
+  E('tawouk', 'Tawouk o’clock', 'Wa2t el tawouk', 'Type her favourite meal.', 'Ekteb akletha el mofaddala.'),
   E('candy', 'Sweet tooth', 'Bt7eb el 7elw', 'In Germ Zapper, tap the candy. A lot.', 'F Germ Zapper, dos 3al 7alawyat… keteer.'),
   E('scholar', 'Top of the class', 'El awel 3al daf3a', 'Get every Smile School card right.', 'Gaweb kol cards Smile School sa7.'),
   E('clean', 'Squeaky clean', 'Nadafa', 'Finish a full two-minute brush.', 'Kammel 8aseel de2i2teen kamleen.'),

@@ -102,3 +102,27 @@ export function openPad(source, render) {
   addEventListener('keydown', onKey, true);
   return { close };
 }
+
+// The same card, opened straight away (for things that are already unlocked).
+export function openCard(render, text) {
+  if ($('.vault')) return null;
+  const v = document.createElement('div');
+  v.className = 'vault';
+  v.setAttribute('role', 'dialog');
+  v.setAttribute('aria-modal', 'true');
+  v.innerHTML = `<div class="vault-card"><button type="button" class="vault-x" aria-label="${t('Close', 'E2fel')}">×</button></div>`;
+  document.body.appendChild(v);
+  requestAnimationFrame(() => v.classList.add('on'));
+  const card = $('.vault-card', v);
+  const onKey = (e) => { if (e.key === 'Escape') close(); };
+  const close = () => {
+    v.classList.remove('on');
+    removeEventListener('keydown', onKey);
+    setTimeout(() => v.remove(), 300);
+  };
+  $('.vault-x', v).onclick = close;
+  v.addEventListener('click', (e) => { if (e.target === v && !v.classList.contains('stay')) close(); });
+  addEventListener('keydown', onKey);
+  render({ text, card, close, overlay: v });
+  return { close };
+}

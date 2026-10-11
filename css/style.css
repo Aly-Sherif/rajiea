@@ -706,7 +706,7 @@ body.party .hero { animation: party 0.5s linear infinite alternate; }
 .seal { -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
 
 /* ── Hidden message reveals ── */
-.farouk { font-style: normal; font-size: 14px; opacity: 0.5; cursor: default; display: inline-block; padding: 0 2px; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+.mk-dot { font-style: normal; font-size: 14px; opacity: 0.5; cursor: default; display: inline-block; padding: 0 2px; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
 .marquee:hover .track { animation-play-state: paused; }
 .vault-card.love { width: 260px; display: grid; justify-items: center; gap: 10px; padding: 30px 18px 26px; }
 .love-heart { border: 0; background: none; cursor: pointer; font-size: 64px; line-height: 1; transform: scale(var(--grow, 1)); transition: transform 0.3s var(--ease-back); animation: beat 1.3s ease-in-out infinite; }

@@ -291,7 +291,7 @@ const multiTap = (el, n, gap, fn) => {
   });
 };
 multiTap($('#footTooth'), 3, 900, () => openPad(BOX.a));
-$$('.farouk').forEach((el) => multiTap(el, 3, 1200, () => openPad(BOX.c, 'story')));
+$$('.mk-dot').forEach((el) => multiTap(el, 3, 1200, () => openPad(BOX.c, 'story')));
 
 // pressing and holding the wax seal for a few seconds
 const seal = $('.seal');

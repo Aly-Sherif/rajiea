@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Rajiea · راجية — Dentist &amp; Smile-maker</title>
+  <meta name="description" content="A little world made for Rajiea — dentist, smile-maker, one of a kind. Meet the 3D her, learn tooth secrets and play for a prize.">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#ff3d8b">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Rajiea · راجية">
+  <meta property="og:description" content="Dentist. Smile-maker. One of a kind. Come say hi and play for a prize 🦷💖">
+  <meta property="og:image" content="https://aly-sherif.github.io/rajiea/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@500;600;700;800&family=Fredoka:wght@500;600;700&family=Nunito:wght@500;600;700;800&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="modulepreload" href="vendor/three.module.min.js">
+</head>
+<body>
+  <div class="loader" id="loader" aria-hidden="true">
+    <svg class="loader-tooth" viewBox="0 0 64 64"><use href="#i-tooth"/></svg>
+    <p>Polishing smiles…</p>
+  </div>
+  <canvas id="fx" aria-hidden="true"></canvas>
+
+  <!-- Reusable drawings -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="i-tooth" viewBox="0 0 64 64">
+        <path d="M32 15C26 9 14 7 10 15S9 32 12 40s3 16 8 16 5-10 8-14 6-3 8 0 3 14 8 14 6-9 8-16 6-17 2-25-16-6-22 0z" fill="#fff" stroke="#5b3a26" stroke-width="3" stroke-linejoin="round"/>
+        <circle cx="24" cy="26" r="2.8" fill="#3f2617"/><circle cx="40" cy="26" r="2.8" fill="#3f2617"/>
+        <circle cx="19" cy="32" r="3" fill="#ff9cc4"/><circle cx="45" cy="32" r="3" fill="#ff9cc4"/>
+        <path d="M27 32q5 5 10 0" fill="none" stroke="#3f2617" stroke-width="2.6" stroke-linecap="round"/>
+      </symbol>
+    </defs>
+  </svg>
+
+  <header class="nav" id="nav">
+    <a class="brand" href="#top" aria-label="Back to top">
+      <svg viewBox="0 0 64 64"><use href="#i-tooth"/></svg>
+      <span>Rajiea</span>
+    </a>
+    <nav class="nav-links" aria-label="Sections">
+      <a href="#meet">About</a>
+      <a href="#tips">Tips</a>
+      <a href="#games">Games</a>
+      <a href="#brush">Brush</a>
+    </nav>
+    <button class="sound" id="soundBtn" type="button" aria-label="Turn sound off" title="Sound">🔊</button>
+  </header>
+
+  <main>
+    <!-- ───────── Hero ───────── -->
+    <section class="hero" id="top">
+      <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
+      <div class="hero-inner">
+        <div class="hero-copy">
+          <span class="pill">✦ Welcome to her little world</span>
+          <h1 class="title" aria-label="Rajiea, راجية">
+            <span class="title-en" id="titleEn" aria-hidden="true">Rajiea</span>
+            <span class="title-ar" lang="ar" dir="rtl" aria-hidden="true">راجية</span>
+          </h1>
+          <p class="tagline">Dentist <span class="dot">·</span> <span class="rotator" id="rotator">smile-maker</span></p>
+        </div>
+        <div class="hero-extra">
+          <p class="lead">A hijabi dentist who protects smiles for a living. Meet the 3D her, learn a few tooth secrets, and play for a prize.</p>
+          <div class="cta">
+            <a class="btn btn-pink" href="#games">Play &amp; win 🎁</a>
+            <a class="btn btn-cream" href="#meet">Meet her</a>
+          </div>
+        </div>
+
+        <div class="stage-col">
+          <div class="stage" id="stage">
+            <div class="stage-glow"></div>
+            <div class="bubble" id="bubble" role="status" aria-live="polite"></div>
+            <button type="button" class="zoom-btn" id="zoomBtn" aria-pressed="false">🔍 Close-up</button>
+            <p class="stage-fallback">The 3D Rajiea needs a newer browser to appear — but the games below still work! 🦷</p>
+          </div>
+          <div class="controls">
+            <div class="moves" role="group" aria-label="Make her move">
+              <button type="button" data-move="wave"><span>👋</span>Wave</button>
+              <button type="button" data-move="jump"><span>🎉</span>Jump</button>
+              <button type="button" data-move="spin"><span>🌀</span>Spin</button>
+              <button type="button" data-move="dance"><span>🎶</span>Dance</button>
+              <button type="button" data-move="wink"><span>😉</span>Wink</button>
+            </div>
+            <div class="controls-row">
+              <div class="swatches" role="radiogroup" aria-label="Hijab colour">
+                <span class="ctl-label">Hijab</span>
+                <button type="button" role="radio" aria-checked="true" aria-label="Black" style="--sw:#26222a" data-hijab="#26222a"></button>
+                <button type="button" role="radio" aria-checked="false" aria-label="Olive" style="--sw:#6f6a52" data-hijab="#6f6a52"></button>
+                <button type="button" role="radio" aria-checked="false" aria-label="Grey" style="--sw:#8e8b92" data-hijab="#8e8b92"></button>
+                <button type="button" role="radio" aria-checked="false" aria-label="Pink" style="--sw:#ff6fa8" data-hijab="#ff6fa8"></button>
+                <button type="button" role="radio" aria-checked="false" aria-label="Beige" style="--sw:#e6cfb2" data-hijab="#e6cfb2"></button>
+                <button type="button" role="radio" aria-checked="false" aria-label="Brown" style="--sw:#7a4e33" data-hijab="#7a4e33"></button>
+              </div>
+              <div class="mode" role="group" aria-label="Outfit">
+                <button type="button" data-outfit="clinic" aria-pressed="true">🦷 Clinic</button>
+                <button type="button" data-outfit="city" aria-pressed="false">📱 City</button>
+                <button type="button" data-outfit="cozy" aria-pressed="false">☁️ Cozy</button>
+              </div>
+            </div>
+          </div>
+          <p class="hint">Drag to turn her around · tap her for a surprise</p>
+        </div>
+      </div>
+      <a class="scroll-cue" href="#meet" aria-label="Scroll down"><span></span></a>
+    </section>
+
+    <div class="marquee" aria-hidden="true">
+      <div class="track">
+        <span>SMILE ✦ FLOSS ✦ SPARKLE ✦ <b lang="ar">ابتسامة</b> ✦ BRUSH ✦ SHINE ✦ <b lang="ar">راجية</b> ✦&nbsp;</span>
+        <span>SMILE ✦ FLOSS ✦ SPARKLE ✦ <b lang="ar">ابتسامة</b> ✦ BRUSH ✦ SHINE ✦ <b lang="ar">راجية</b> ✦&nbsp;</span>
+      </div>
+    </div>
+
+    <!-- ───────── Meet her ───────── -->
+    <section class="section" id="meet">
+      <header class="sec-head" data-reveal>
+        <span class="kicker" lang="ar">تعرّف على راجية</span>
+        <h2>Meet Dr. Rajiea</h2>
+        <p>Six things everyone should know.</p>
+      </header>
+      <div class="facts">
+        <article class="fact" data-reveal style="--d:0">
+          <div class="fact-icon">✨</div>
+          <h3>Her name means hope</h3>
+          <p><span lang="ar">راجية</span> comes from <span lang="ar">رجاء</span> — “hope”. She lives up to it.</p>
+        </article>
+        <article class="fact" data-reveal style="--d:1">
+          <div class="fact-icon">🦷</div>
+          <h3>Dentist by profession</h3>
+          <p>She spends her days protecting smiles, one tooth at a time.</p>
+        </article>
+        <article class="fact" data-reveal style="--d:2">
+          <div class="fact-icon">🧕</div>
+          <h3>Hijabi, always elegant</h3>
+          <p>Graceful in a hijab, sharp in a white coat.</p>
+        </article>
+        <article class="fact" data-reveal style="--d:3">
+          <div class="fact-icon">😁</div>
+          <h3>Superpower: smiles</h3>
+          <p>Making people smile is, quite literally, in her job description.</p>
+        </article>
+        <article class="fact" data-reveal style="--d:4">
+          <div class="fact-icon">🦠</div>
+          <h3>Arch-enemy: cavities</h3>
+          <p>Sugar bugs, beware. She’s on to you.</p>
+        </article>
+        <article class="fact" data-reveal style="--d:5">
+          <div class="fact-icon">📱</div>
+          <h3>Off duty</h3>
+          <p>Phone up, smile on — mirror selfies are an art. Try her City and Cozy outfits above.</p>
+        </article>
+      </div>
+      <div class="stats" data-reveal>
+        <div class="stat"><b data-count="32">0</b><span>teeth she could name in her sleep</span></div>
+        <div class="stat"><b data-count="2">0</b><span>minutes — the perfect brush</span></div>
+        <div class="stat"><b data-count="100" data-suffix="%">0</b><span>smile guaranteed</span></div>
+      </div>
+    </section>
+
+    <!-- ───────── Then & now ───────── -->
+    <section class="section tinted" id="then">
+      <header class="sec-head" data-reveal>
+        <span class="kicker" lang="ar">زمان والنهارده</span>
+        <h2>Then &amp; now</h2>
+        <p>Before the white coat, there was this smile.</p>
+      </header>
+      <div class="tn-wrap" data-reveal>
+        <div class="tn-stage" id="babyStage">
+          <div class="stage-glow"></div>
+          <div class="bubble" id="babyBubble" role="status" aria-live="polite"></div>
+          <span class="tn-badge">Little Rajiea</span>
+        </div>
+        <div class="tn-copy">
+          <div class="tn-row"><span class="tn-tag">Then</span><p>Short brown hair, a navy dress with white trim, a toy in hand — and the biggest grin in the room.</p></div>
+          <div class="tn-row"><span class="tn-tag pink">Now</span><p>A hijab, a white coat and a giant toothbrush, protecting smiles for a living.</p></div>
+          <div class="tn-row"><span class="tn-tag brown">Always</span><p>The gold bracelet and that smile. Some things never change.</p></div>
+          <button type="button" class="btn btn-cream" id="babyGiggle">Make her giggle 🧸</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────── Myth or fact ───────── -->
+    <section class="section" id="tips">
+      <header class="sec-head" data-reveal>
+        <span class="kicker" lang="ar">نصايح للابتسامة</span>
+        <h2>Smile School</h2>
+        <p>Myth or fact? Make your guess and the card flips. Dentist-approved answers.</p>
+      </header>
+      <div class="mf-score" data-reveal>Your score <b id="mfScore">0</b> / <span id="mfTotal">8</span></div>
+      <div class="mf-grid" id="mfGrid"></div>
+    </section>
+
+    <!-- ───────── Games ───────── -->
+    <section class="section tinted" id="games">
+      <header class="sec-head" data-reveal>
+        <span class="kicker" lang="ar">يلا نلعب</span>
+        <h2>Game time</h2>
+        <p>Win a prize, save some teeth.</p>
+      </header>
+      <div class="tabs" role="tablist" data-reveal>
+        <button type="button" role="tab" id="tab-quiz" aria-controls="panel-quiz" aria-selected="true">🎓 The Rajiea Quiz</button>
+        <button type="button" role="tab" id="tab-zap" aria-controls="panel-zap" aria-selected="false">🦠 Germ Zapper</button>
+        <span class="tab-ink" aria-hidden="true"></span>
+      </div>
+      <div class="game-card" data-reveal>
+        <div class="panel" id="panel-quiz" role="tabpanel" aria-labelledby="tab-quiz">
+          <div class="quiz" id="quiz"></div>
+        </div>
+        <div class="panel" id="panel-zap" role="tabpanel" aria-labelledby="tab-zap" hidden>
+          <div class="zap" id="zap">
+            <div class="zap-hud">
+              <div>Score <b id="zScore">0</b></div>
+              <div class="zap-time"><span>Time</span><b id="zTime">30</b><i id="zBar"></i></div>
+              <div>Best <b id="zBest">0</b></div>
+            </div>
+            <div class="zap-board" id="zBoard"></div>
+            <div class="zap-overlay" id="zOverlay"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────── Brush along ───────── -->
+    <section class="section" id="brush">
+      <header class="sec-head" data-reveal>
+        <span class="kicker" lang="ar">يلا نغسل سناننا</span>
+        <h2>Brush along with Rajiea</h2>
+        <p>Two minutes, four zones, thirty seconds each. Grab your brush and press start.</p>
+      </header>
+      <div class="brush-wrap" data-reveal>
+        <div class="mouth-card">
+          <svg id="mouth" viewBox="0 0 400 330" role="img" aria-label="A smile split into four zones; the zone to brush lights up"></svg>
+        </div>
+        <div class="brush-side">
+          <div class="timer">
+            <svg viewBox="0 0 120 120" aria-hidden="true">
+              <circle cx="60" cy="60" r="52" class="ring-bg"/>
+              <circle cx="60" cy="60" r="52" class="ring" id="bRing"/>
+            </svg>
+            <div class="timer-text">
+              <div class="time" id="bTime">2:00</div>
+              <div class="zone" id="bZone">Ready?</div>
+            </div>
+          </div>
+          <p class="brush-tip" id="bTip">Small, gentle circles — like you’re polishing pearls.</p>
+          <div class="brush-btns">
+            <button type="button" class="btn btn-pink" id="bStart">Start brushing</button>
+            <button type="button" class="btn btn-cream" id="bReset">Reset</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────── A little note ───────── -->
+    <section class="section tinted note-sec" id="note">
+      <header class="sec-head" data-reveal>
+        <span class="kicker" lang="ar">رسالة صغيرة</span>
+        <h2>A little note</h2>
+        <p>Tap the envelope.</p>
+      </header>
+      <div class="env-wrap" data-reveal>
+        <button type="button" class="envelope" id="envelope" aria-expanded="false" aria-label="Open the letter">
+          <span class="env-back"></span>
+          <span class="letter" id="letter"></span>
+          <span class="env-front"></span>
+          <span class="env-flap"></span>
+          <span class="seal">R</span>
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <svg class="foot-tooth" id="footTooth" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-tooth"/></svg>
+    <p>Made with 🤍 for Rajiea · <span lang="ar">صُنع بحب لراجية</span></p>
+    <p class="small">© 2026</p>
+  </footer>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

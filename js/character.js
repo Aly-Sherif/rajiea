@@ -915,7 +915,7 @@ function buildHead(head, hijabMat) {
   };
 }
 
-export function createRajiea(container, { bubble, lines = [], badge = 'Dr. Rajiea', view } = {}) {
+export function createRajiea(container, { bubble, lines = [], badge = 'Dr. Rajiea', view, fixed = false, extend } = {}) {
   const FULL = { dist: 9.4, camY: 2.1, lookY: 1.78 };
   const CLOSE = { dist: 1.6, camY: 2.98, lookY: 2.94 };
   const stage = createStage(container, { ...FULL, podium: 0.78, shadowTop: 4, ...view });
@@ -1177,8 +1177,17 @@ export function createRajiea(container, { bubble, lines = [], badge = 'Dr. Rajie
       }
       if (action.t >= action.dur) action = null;
     }
+    // a held pose set from outside, blended over everything else
+    const P = api.pose;
+    if (P) {
+      const w = P.w ?? 1;
+      if (P.r) blend(r, P.r, w);
+      if (P.l) blend(l, P.l, w);
+      if (P.expr && !action) expr = P.expr;
+      tilt += (P.tilt || 0) * w; lean += (P.lean || 0) * w; extraYaw += (P.yaw || 0) * w;
+    }
     if (face.expression !== expr) face.setExpression(expr);
-    if (!reduceMotion() && !action && idleTimer > 11) play(Math.random() < 0.5 ? 'wave' : 'wink');
+    if (!reduceMotion() && !action && !api.calm && idleTimer > 11) play(Math.random() < 0.5 ? 'wave' : 'wink');
 
     // the right arm mirrors its sideways angle
     armR.shoulder.rotation.set(r.sx, 0, -r.sz);
@@ -1189,11 +1198,11 @@ export function createRajiea(container, { bubble, lines = [], badge = 'Dr. Rajie
     body.scale.set(1 / Math.sqrt(squash), squash, 1 / Math.sqrt(squash));
     body.rotation.set(lean, 0, sway);
     scarf.children.forEach((t, i) => (t.rotation.x = -0.08 - Math.sin(time * 1.8 + i) * 0.03 - hop * 0.3));
-    char.rotation.y = stage.stepTurn(dt) + extraYaw;
-    lookX = damp(lookX, stage.pointer.x, 5, dt);
-    lookY = damp(lookY, stage.pointer.y, 5, dt);
+    char.rotation.y = (fixed ? 0 : stage.stepTurn(dt)) + extraYaw;
+    lookX = damp(lookX, P?.lookX ?? stage.pointer.x, 5, dt);
+    lookY = damp(lookY, P?.lookY ?? stage.pointer.y, 5, dt);
     head.rotation.set(-lookY * 0.14 + nod, lookX * 0.45, tilt + sway * 0.5 - lookX * 0.04);
-    const propNow = action?.type === 'selfie' ? 'phone' : action?.type === 'matcha' ? 'cup' : OUTFITS[outfit].prop;
+    const propNow = action?.type === 'selfie' ? 'phone' : action?.type === 'matcha' ? 'cup' : P && 'prop' in P ? P.prop : OUTFITS[outfit].prop;
     brush.visible = propNow === 'brush';
     cup.visible = propNow === 'cup';
     phone.visible = propNow === 'phone';
@@ -1218,6 +1227,12 @@ export function createRajiea(container, { bubble, lines = [], badge = 'Dr. Rajie
   stage.onHold = (raycaster) => {
     if (raycaster.intersectObject(char, true).length) api.onHold?.();
   };
+  // let a caller add more to this stage
+  if (extend) {
+    api.stage = stage;
+    api.char = char;
+    extend({ THREE, stage, scene, char, body, head, add, lathe, std, COL, buildFace, makeBlinker, placeOnFace, makeHeart, damp, lerp, clamp, reduceMotion, api });
+  }
   stage.onTap = (raycaster) => {
     const kind = floats.hit(raycaster);
     if (kind) { api.onPop?.(kind); return; }

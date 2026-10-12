@@ -455,6 +455,28 @@ env.addEventListener('click', () => {
   } else sfx.click();
 });
 
+// ── Cairo's weather: a little chip under the welcome, and rain on the page when it rains in Cairo ──
+import('./weather.js').then(async ({ cairoWeather, weatherFx, ICON }) => {
+  const w = await cairoWeather();
+  const LINES = {
+    rain: t('Rain in Cairo — cozy matcha weather', 'Masr betmatar — gaw matcha w bataneya'),
+    storm: t('Thunder in Cairo — stay in, stay cozy', 'Ra3d f masr — khallooko gowwa w dafyaneen'),
+    clouds: t('Cloudy Cairo — cappuccino weather', 'Masr me8ayyema — gaw cappuccino'),
+    hot: t('Boiling Cairo — iced matcha, then rinse 😉', 'Masr nar — iced matcha, w ba3deen madmada 😉'),
+    clear: t('Sunny Cairo — smile, it suits you', 'Masr mshamsa — ebtesem, lay2a 3aleek'),
+    night: t('Clear night over Cairo', 'Leila safya fo2 masr'),
+    fog: t('Foggy Cairo — drive safe', 'Shabbora f masr — soo2 bel ra7a'),
+    dust: t('Khamaseen in Cairo — windows up', 'Khamaseen f masr — e2fel el shebabeek'),
+    cool: t('Cool breeze in Cairo — hoodie weather', 'Nesma sa2a f masr — gaw hoodie'),
+  };
+  const chip = $('#wxChip');
+  if (chip) {
+    chip.textContent = `${ICON[w.kind]} ${w.temp}° · ${LINES[w.kind]}`;
+    chip.hidden = false;
+  }
+  weatherFx(w.kind);
+}).catch(() => {});
+
 // ── Notes for Rajiea ──
 if (!CONFIG.notes) $$('a[href="#notes"]').forEach((a) => a.remove());
 initNotes($('#notes'), { onWord: (text) => wordEggs(text, true), onSent: () => egg('pen') });

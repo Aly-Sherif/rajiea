@@ -27,15 +27,23 @@ async function unsealNote(row, priv) {
   return JSON.parse(new TextDecoder().decode(pt));
 }
 
-const api = (cfg, path, init = {}) => fetch(`${cfg.url}/rest/v1/${path}`, {
-  ...init,
-  headers: { apikey: cfg.key, 'Content-Type': 'application/json', ...(init.headers || {}) },
+// the store only has two doors, both needing the notes room key: put a note in, read them back
+const rpc = (cfg, fn, args) => fetch(`${cfg.url}/rest/v1/rpc/${fn}`, {
+  method: 'POST',
+  headers: { apikey: cfg.key, Authorization: `Bearer ${cfg.key}`, 'Content-Type': 'application/json' },
+  body: JSON.stringify(args),
 });
 
 export function initNotes(root, hooks = {}) {
   const cfg = CONFIG.notes;
   if (!root) return;
   if (!cfg || !window.crypto?.subtle) { root.hidden = true; return; }
+  // stay out of sight until the store answers, so a send can never fail in front of a friend
+  root.hidden = true;
+  rpc(cfg, 'rajiea_get', { room: cfg.room, after: 9e15 }).then((r) => {
+    if (r.ok) root.hidden = false;
+    else $$('a[href="#notes"]').forEach((x) => x.remove());
+  }).catch(() => $$('a[href="#notes"]').forEach((x) => x.remove()));
   const form = $('#noteForm', root);
   const msg = form.elements.msg;
   const from = form.elements.from;
@@ -63,7 +71,7 @@ export function initNotes(root, hooks = {}) {
     say(t('Sealing and sending…', 'Ben2felha w neb3atha…'));
     try {
       const body = await seal({ n: from.value.trim().slice(0, 40), m: text.slice(0, 600), s: form.elements.sticker.value, l: isAr ? 'ar' : 'en' }, cfg.pub);
-      const r = await api(cfg, 'rajiea_notes', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(body) });
+      const r = await rpc(cfg, 'rajiea_put', { room: cfg.room, body: JSON.stringify(body) });
       if (!r.ok) throw new Error(String(r.status));
       sent.push(Date.now());
       try { localStorage.setItem(LIMIT, JSON.stringify(sent)); } catch {}
@@ -122,10 +130,10 @@ function showInbox(cfg, priv) {
   const list = $('.inbox-list', o);
   (async () => {
     try {
-      const r = await api(cfg, 'rajiea_notes?select=id,created_at,epk,iv,ct&order=created_at.desc&limit=300');
+      const r = await rpc(cfg, 'rajiea_get', { room: cfg.room, after: 0 });
       if (!r.ok) throw new Error(String(r.status));
-      const rows = await r.json();
-      const notes = (await Promise.all(rows.map(async (row) => { try { return { ...(await unsealNote(row, priv)), at: row.created_at }; } catch { return null; } }))).filter(Boolean);
+      const rows = (await r.json()).reverse();
+      const notes = (await Promise.all(rows.map(async (row) => { try { return { ...(await unsealNote(JSON.parse(row.body), priv)), at: row.created_at }; } catch { return null; } }))).filter(Boolean);
       if (!notes.length) { list.innerHTML = `<p class="inbox-empty">${t('No notes yet. Share the link with your friends 💌', 'Lessa mafeesh rasayel. Eb3aty el link l so7abek 💌')}</p>`; return; }
       const fmt = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
       list.innerHTML = notes.map((n, i) => `

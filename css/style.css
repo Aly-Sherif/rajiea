@@ -932,3 +932,11 @@ html[lang='ar'] .tab-ink { left: 0; }
   .track { animation: none; }
   [data-reveal], [data-split] .w > span { opacity: 1; transform: none; }
 }
+
+/* Cairo's weather */
+.wx-chip { display: inline-flex; align-items: center; gap: 6px; margin: 10px 0 0; padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 700; color: var(--ink); background: rgba(255, 255, 255, 0.72); box-shadow: inset 0 0 0 1px rgba(176, 127, 92, 0.18); width: fit-content; animation: wxIn 0.6s var(--ease) both; }
+.wx-chip[hidden] { display: none; }
+@keyframes wxIn { from { opacity: 0; transform: translateY(6px); } }
+.wx-fx { position: fixed; inset: 0; z-index: 40; pointer-events: none; opacity: 0.7; }
+.wx-fx.wx-fog { opacity: 0.8; }
+html.private .wx-fx { opacity: 0.45; }

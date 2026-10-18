@@ -24,6 +24,31 @@ const session = {
 };
 const remember = (raw) => { try { localStorage.setItem(PUB, raw); } catch {} };
 
+// Log out: back to the code screen, and this device forgets it was let in, so a code is needed again.
+function logout() {
+  session.clear();
+  try { localStorage.removeItem(PUB); } catch {}
+  location.reload();
+}
+// One small button on every screen (above pop-ups too). The first tap asks, the second logs out.
+function logoutButton() {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'rj-out';
+  b.title = t('Log out', 'Khorog');
+  b.setAttribute('aria-label', t('Log out', 'Khorog'));
+  b.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4M15 8l4 4-4 4M19 12H9"/></svg><span>${t('Tap again to log out', 'Dos tany 3ashan tokhrog')}</span>`;
+  let timer = 0;
+  b.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (b.classList.contains('armed')) return logout();
+    b.classList.add('armed');
+    clearTimeout(timer);
+    timer = setTimeout(() => b.classList.remove('armed'), 3500);
+  });
+  document.body.appendChild(b);
+}
+
 async function withRaw(kind, raw) {
   return JSON.parse(await openBox(await files[kind], await importRaw(raw)));
 }
@@ -45,6 +70,7 @@ function hideLoader() {
 
 async function start(kind, data) {
   const style = (css) => { if (!css) return; const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st); };
+  logoutButton();
   if (kind === 'private') {
     root.classList.add('private');
     style(data.scss);
@@ -54,7 +80,7 @@ async function start(kind, data) {
       $, $$, t, isAr, openPad, openCard, D: data.D, privateMode: true,
       sfx: fx.sfx, confetti: fx.confetti, confettiFrom: fx.confettiFrom, startMusic: fx.startMusic,
       openFile: async (url, raw) => openBox(await getJSON(url), await importRaw(raw)),
-      lock() { session.clear(); location.reload(); },
+      lock: logout,
       toPublic() { session.set('public', data.pub); remember(data.pub); location.reload(); },
       switchLang,
       ready: hideLoader,

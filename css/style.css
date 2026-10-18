@@ -940,3 +940,17 @@ html[lang='ar'] .tab-ink { left: 0; }
 .wx-fx { position: fixed; inset: 0; z-index: 40; pointer-events: none; opacity: 0.7; }
 .wx-fx.wx-fog { opacity: 0.8; }
 html.private .wx-fx { opacity: 0.45; }
+
+/* ── Log out (every screen, above pop-ups) ── */
+.rj-out { position: fixed; left: max(14px, env(safe-area-inset-left)); bottom: max(14px, env(safe-area-inset-bottom)); z-index: 3050; display: inline-flex; align-items: center; height: 42px; min-width: 42px; padding: 0 11px; border: 0; border-radius: 999px; cursor: pointer;
+  font: inherit; font-size: 13px; font-weight: 700; color: var(--ink); background: rgba(255, 255, 255, 0.88); box-shadow: 0 10px 26px -12px rgba(42, 23, 18, 0.55), inset 0 0 0 1px rgba(42, 23, 18, 0.1);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); -webkit-tap-highlight-color: transparent; transition: background 0.2s, color 0.2s, opacity 0.2s; opacity: 0.85; }
+.rj-out:hover, .rj-out:focus-visible, .rj-out.armed { opacity: 1; }
+.rj-out svg { flex: none; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.rj-out span { max-width: 0; overflow: hidden; white-space: nowrap; transition: max-width 0.35s var(--ease), margin 0.35s var(--ease); }
+.rj-out.armed { color: #fff; background: var(--pink); }
+.rj-out.armed span { max-width: 240px; margin-left: 8px; }
+html.private .rj-out { color: #fff; background: rgba(23, 12, 20, 0.62); box-shadow: 0 10px 26px -12px rgba(0, 0, 0, 0.8), inset 0 0 0 1px rgba(255, 255, 255, 0.18); }
+html.private .rj-out.armed { background: var(--pink); }
+/* phones: sit above the bottom tab bar on her site */
+@media (max-width: 860px) { html:not(.private) .rj-out { bottom: calc(max(12px, env(safe-area-inset-bottom)) + 76px); } }

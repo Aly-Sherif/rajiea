@@ -397,8 +397,9 @@ function createStage(container, { dist = 10.4, camY = 2.05, lookY = 1.62, podium
     stage.afterRender?.();
     requestAnimationFrame(frame);
   }
+  let ready = false;
   const sync = () => {
-    const want = vis.inView && vis.tab && vis.free;
+    const want = ready && vis.inView && vis.tab && vis.free;
     if (want && !running) { running = true; clock.getDelta(); requestAnimationFrame(frame); }
     else if (!want) running = false;
   };
@@ -409,7 +410,19 @@ function createStage(container, { dist = 10.4, camY = 2.05, lookY = 1.62, podium
     const free = !document.querySelector('body > .vault, body > .secret, body > .inbox');
     if (free !== vis.free) { vis.free = free; sync(); }
   }).observe(document.body, { childList: true });
-  stage.start = sync;
+  // first start: compile every shader in the background (so the page never freezes), then fade in
+  let starting = false;
+  stage.start = () => {
+    if (ready || starting) return sync();
+    starting = true;
+    canvas.style.opacity = '0';
+    Promise.resolve(renderer.compileAsync?.(scene, camera)).catch(() => {}).then(() => {
+      ready = true;
+      sync();
+      canvas.style.transition = 'opacity 0.6s ease';
+      requestAnimationFrame(() => requestAnimationFrame(() => (canvas.style.opacity = '')));
+    });
+  };
   return stage;
 }
 

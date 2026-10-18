@@ -1,6 +1,10 @@
-// The 3D Rajiea (three outfits) and Little Rajiea, built from simple shapes.
-// No photos are used anywhere — everything here is drawn in code.
+// The 3D Rajiea (three outfits) and Little Rajiea. Generic, realistic-styled characters
+// sculpted and painted entirely in code; no photos are used anywhere.
 import * as THREE from '../vendor/three.module.min.js';
+import { studioEnvironment, contactShadow, clothMaterial, setCloth, skinMaterial, weave, canvas as makeCanvas, tex, skinWeights, surface } from './character-kit.js';
+import { buildHead, ADULT, opening, hijabGeometry, hijabRim } from './character-head.js';
+import { L, torsoR, torsoZ, buildSkeleton, dress, HAND_POSES } from './character-body.js';
+import { buildChild } from './character-child.js';
 
 const PI = Math.PI;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -138,32 +142,6 @@ function makeBlinker() {
   };
 }
 
-function badgeTexture(text) {
-  const c = document.createElement('canvas');
-  c.width = 512;
-  c.height = 192;
-  const g = c.getContext('2d');
-  const tex = new THREE.CanvasTexture(c);
-  const draw = () => {
-    g.clearRect(0, 0, 512, 192);
-    g.fillStyle = '#ff3d8b';
-    g.beginPath();
-    g.roundRect(8, 8, 496, 176, 60);
-    g.fill();
-    g.fillStyle = '#ffffff';
-    g.font = '600 80px Fraunces, Georgia, serif';
-    g.textAlign = 'center';
-    g.textBaseline = 'middle';
-    g.fillText(text, 256, 100);
-    tex.needsUpdate = true;
-  };
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.anisotropy = 4;
-  draw();
-  document.fonts?.ready.then(draw);
-  return tex;
-}
-
 // ── Little floating friends ──────────────────────────────────
 function makeTooth() {
   const g = new THREE.Group();
@@ -215,7 +193,7 @@ function makeSparkle(color = COL.gold) {
 }
 
 function makeToy() {
-  // a little purple toy with a pink face, like the one in the baby photo
+  // a little purple toy with a pink face
   const g = new THREE.Group();
   add(g, new THREE.CylinderGeometry(0.03, 0.03, 0.22, 12), std(0x8e5bd6, { roughness: 0.4 }), [0, 0.05, 0]);
   add(g, new THREE.SphereGeometry(0.1, 24, 16), std(0x8e5bd6, { roughness: 0.35 }), [0, 0.2, 0]);
@@ -265,7 +243,7 @@ function createStage(container, { dist = 10.4, camY = 2.05, lookY = 1.62, podium
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, matchMedia('(pointer: coarse)').matches ? 1.5 : 1.75));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.NeutralToneMapping;
-  renderer.toneMappingExposure = 1.05;
+  renderer.toneMappingExposure = 1.0;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   container.appendChild(renderer.domElement);
@@ -275,22 +253,25 @@ function createStage(container, { dist = 10.4, camY = 2.05, lookY = 1.62, podium
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
 
-  scene.add(new THREE.HemisphereLight(0xfff5f8, 0xead6ca, 1.5));
-  const key = new THREE.DirectionalLight(0xffffff, 2.3);
-  key.position.set(3, 6.5, 5);
+  // soft pink studio: image-based fill and reflections, a warm key with one shadow, a pink rim
+  scene.environment = studioEnvironment(renderer);
+  scene.environmentIntensity = 0.62;
+  const key = new THREE.DirectionalLight(0xfff1e6, 2.45);
+  key.position.set(4.4, 5.8, 3.8);
   key.target.position.set(0, lookY * 0.75, 0);
   key.castShadow = true;
-  key.shadow.mapSize.set(1024, 1024);
-  Object.assign(key.shadow.camera, { left: -3, right: 3, top: shadowTop, bottom: -1.5, near: 1, far: 20 });
-  key.shadow.bias = -0.0004;
-  key.shadow.normalBias = 0.02;
+  const big = !matchMedia('(pointer: coarse)').matches;
+  key.shadow.mapSize.set(big ? 2048 : 1024, big ? 2048 : 1024);
+  Object.assign(key.shadow.camera, { left: -2.6, right: 2.6, top: shadowTop, bottom: -1.2, near: 1, far: 20 });
+  key.shadow.bias = -0.0003;
+  key.shadow.normalBias = 0.012;
   scene.add(key, key.target);
-  const rim = new THREE.DirectionalLight(0xff7ab0, 1.6);
-  rim.position.set(-4, 3, -4);
+  const rim = new THREE.DirectionalLight(0xff86b5, 1.5);
+  rim.position.set(-4, 3.5, -4.5);
   scene.add(rim);
-  const fill = new THREE.DirectionalLight(0xffe6d1, 0.7);
-  fill.position.set(-3, 2, 4);
-  scene.add(fill);
+  const rim2 = new THREE.DirectionalLight(0xffe0ea, 0.7);
+  rim2.position.set(4.5, 3, -3.5);
+  scene.add(rim2);
 
   const base = new THREE.Group();
   add(base, new THREE.CylinderGeometry(1.25, 1.32, 0.28, 72), std(COL.beige, { roughness: 0.8 }), [0, -0.14, 0]);
@@ -472,452 +453,121 @@ const POSES = {
   hold: { r: REST, l: { sx: -0.3, sz: 0.1, ex: -1.4 } },
 };
 
-// ── Head: one smooth sculpted face with painted details, eyes with real lids,
-//    and a hijab shell that frames the face and wraps under the chin ──
-const HEAD = { c: new THREE.Vector3(0, 0.27, 0), rx: 0.178, ry: 0.245, rz: 0.215 };
-const OPEN = { vc: -0.1, a: 0.76, top: 0.73, bot: 0.86 };
-const gauss = (u, v, cu, cv, su, sv) => Math.exp(-(((u - cu) / su) ** 2) - ((v - cv) / sv) ** 2);
-
-// how far each facial feature stands out, at face coordinates (u, v)
-function relief(u, v, grin = 0) {
-  const s = (cu, cv, su, sv) => gauss(u, v, cu, cv, su, sv) + gauss(u, v, -cu, cv, su, sv);
-  let d = 0;
-  d -= 0.017 * s(0.36, 0.1, 0.17, 0.11);
-  d += 0.006 * s(0.35, 0.27, 0.22, 0.07);
-  d += 0.009 * s(0.55, -0.1 + grin * 0.03, 0.17, 0.14) * (1 + grin * 0.45);
-  d -= 0.006 * s(0.6, -0.42, 0.14, 0.12) * (1 - grin * 0.5);
-  const t = clamp((0.1 - v) / 0.32, 0, 1);
-  const w = lerp(0.055, 0.08, t);
-  const fall = v < -0.22 ? Math.exp(-(((v + 0.22) / 0.04) ** 2)) : 1;
-  const top = v > 0.1 ? Math.exp(-(((v - 0.1) / 0.08) ** 2)) : 1;
-  d += lerp(0.002, 0.023, t ** 1.4) * Math.exp(-((u / w) ** 2)) * fall * top;
-  d += 0.01 * gauss(u, v, 0, -0.205, 0.065, 0.05);
-  d += 0.009 * s(0.1, -0.24 + grin * 0.01, 0.048 + grin * 0.008, 0.042);
-  const mw = 1 + grin * 0.16;
-  d += 0.007 * gauss(u, v, 0, -0.4 + grin * 0.008, 0.15 * mw, 0.038);
-  d += 0.009 * gauss(u, v, 0, -0.487 - grin * 0.012, 0.125 * mw, 0.043) * (1 - grin * 0.25);
-  d -= (0.004 + grin * 0.012) * gauss(u, v, 0, -0.444 - grin * 0.012, 0.18 * mw, 0.02 + grin * 0.02);
-  d -= 0.004 * gauss(u, v, 0, -0.57, 0.11, 0.035);
-  d += 0.011 * gauss(u, v, 0, -0.75, 0.16, 0.1);
-  d -= grin * 0.003 * s(0.26, -0.42, 0.04, 0.05);
-  return d;
+// ── props she holds ──
+const glossy = (color, extra = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.32, clearcoat: 0.7, clearcoatRoughness: 0.18, ...extra });
+function makeBrush() {
+  const g = new THREE.Group();
+  add(g, lathe([[0, -0.15], [0.016, -0.15], [0.02, -0.12], [0.019, 0.0], [0.015, 0.12], [0.009, 0.2], [0.008, 0.235], [0, 0.236]], 24, 30), glossy(COL.pink), [0, 0, 0]);
+  add(g, lathe([[0, -0.1], [0.0205, -0.1], [0.021, -0.02], [0.0195, 0.04], [0, 0.04]], 24, 12), glossy(0xffffff, { roughness: 0.5, clearcoat: 0 }), [0, -0.04, 0], [0, 0, 0], [1.02, 1, 1.05]);
+  const head = new THREE.Group();
+  head.position.set(0, 0.255, 0.004);
+  add(head, new THREE.CapsuleGeometry(0.011, 0.045, 4, 12), glossy(COL.pink), [0, 0, 0], [0, 0, 0], [1.3, 1, 0.75]);
+  add(head, new THREE.BoxGeometry(0.024, 0.05, 0.022, 2, 4, 2), new THREE.MeshStandardMaterial({ color: 0xf6fbff, roughness: 0.85 }), [0, 0.002, 0.018]);
+  add(head, new THREE.BoxGeometry(0.0245, 0.03, 0.012), new THREE.MeshStandardMaterial({ color: 0x8fd0f5, roughness: 0.85 }), [0, 0.006, 0.026]);
+  g.add(head);
+  return g;
+}
+function makeCup() {
+  const g = new THREE.Group();
+  const ceramic = glossy(0xfbf9f6, { roughness: 0.22, clearcoat: 0.9 });
+  add(g, new THREE.LatheGeometry([[0, 0], [0.045, 0], [0.05, 0.006], [0.056, 0.06], [0.064, 0.15], [0.066, 0.163], [0.064, 0.167], [0.06, 0.166], [0.058, 0.15], [0.05, 0.02], [0, 0.018]].map(([x, y]) => new THREE.Vector2(x, y)), 40), ceramic, [0, -0.06, 0]);
+  add(g, new THREE.CylinderGeometry(0.0595, 0.0595, 0.035, 32, 1, true), glossy(COL.pink, { roughness: 0.4 }), [0, 0.02, 0], [0, 0, 0], [1.075, 1, 1.075]);
+  const brew = add(g, new THREE.CircleGeometry(0.058, 32), new THREE.MeshPhysicalMaterial({ color: 0xb07f5c, roughness: 0.3, clearcoat: 0.5 }), [0, 0.085, 0], [-PI / 2, 0, 0]);
+  add(g, new THREE.TorusGeometry(0.03, 0.008, 10, 24, PI * 1.2), ceramic, [0.066, 0.03, 0], [0, 0, -PI * 0.6]);
+  g.userData.brew = brew;
+  return g;
+}
+function makePhone() {
+  const g = new THREE.Group();
+  const shape = new THREE.Shape();
+  const w = 0.072, h = 0.146, r = 0.016;
+  shape.moveTo(-w + r, -h); shape.lineTo(w - r, -h); shape.quadraticCurveTo(w, -h, w, -h + r); shape.lineTo(w, h - r); shape.quadraticCurveTo(w, h, w - r, h);
+  shape.lineTo(-w + r, h); shape.quadraticCurveTo(-w, h, -w, h - r); shape.lineTo(-w, -h + r); shape.quadraticCurveTo(-w, -h, -w + r, -h);
+  const geo = new THREE.ExtrudeGeometry(shape, { depth: 0.012, bevelEnabled: true, bevelSize: 0.004, bevelThickness: 0.004, bevelSegments: 3, curveSegments: 6 });
+  geo.translate(0, 0, -0.006);
+  add(g, geo, glossy(0xe8213f, { roughness: 0.25 }), [0, 0.07, 0.012]);
+  add(g, new THREE.BoxGeometry(0.05, 0.05, 0.006), glossy(0x24242a, { roughness: 0.2 }), [-0.03, 0.17, 0.03]);
+  for (const [x, y] of [[-0.042, 0.182], [-0.018, 0.182], [-0.042, 0.158]]) add(g, new THREE.CylinderGeometry(0.009, 0.009, 0.006, 16), glossy(0x0d0d10, { roughness: 0.05 }), [x, y, 0.034], [PI / 2, 0, 0]);
+  return g;
 }
 
-// the head surface in any direction (dx, dy, dz on a unit sphere)
-function basePoint(dx, dy, dz, grin = 0, out = new THREE.Vector3()) {
-  let x = dx * HEAD.rx, y = dy * HEAD.ry * (dy < 0 ? 0.88 : 1), z = dz * HEAD.rz;
-  if (dy < 0) {
-    const t = -dy, front = smooth(-0.3, 0.3, dz);
-    x *= 1 - 0.22 * Math.pow(t, 1.6) * front;
-    z *= 1 + 0.24 * smooth(0.3, 0.85, t) * smooth(0, 0.4, dz);
+// the city hijab's two long ends with a fringe, lying over the chest
+function fringeTexture() {
+  const c = makeCanvas(256, 64), g = c.getContext('2d');
+  g.lineCap = 'round';
+  for (let k = 0; k < 46; k++) {
+    const x = (k + 0.5) * (256 / 46) + Math.sin(k * 7.1) * 1.2, len = 50 + Math.sin(k * 3.3) * 8;
+    g.strokeStyle = '#fff';
+    g.lineWidth = 2.6;
+    g.beginPath(); g.moveTo(x, 0); g.quadraticCurveTo(x + Math.sin(k) * 2, len * 0.5, x + Math.sin(k * 1.7) * 3, len); g.stroke();
+    g.beginPath(); g.arc(x, 5, 2.6, 0, PI * 2); g.fillStyle = '#fff'; g.fill();
   }
-  if (dz > 0) z += relief(dx, dy, grin) * smooth(0.05, 0.4, dz);
-  return out.set(x, y, z).add(HEAD.c);
+  return tex(c, { srgb: false });
 }
-const surfNormal = (dx, dy, dz, out = new THREE.Vector3()) => out.set(dx / HEAD.rx, dy / HEAD.ry, dz / HEAD.rz).normalize();
-
-function openR(th) {
-  const c = Math.cos(th), s = Math.sin(th);
-  const a = s < 0 ? OPEN.a * (1 - 0.32 * -s) : OPEN.a;
-  const b = s > 0 ? OPEN.top : OPEN.bot;
-  return 1 / Math.sqrt((c / a) ** 2 + (s / b) ** 2);
-}
-const openMask = (u, v) => Math.hypot(u, v - OPEN.vc) / openR(Math.atan2(v - OPEN.vc, u));
-const toFront = (u, v) => Math.sqrt(Math.max(0, 1 - u * u - v * v));
-
-// ── painted skin: soft shading, brows, lips, a hint of hair under the hijab ──
-function smoothPath(g, pts, closed = false) {
-  const n = pts.length;
-  g.moveTo(pts[0][0], pts[0][1]);
-  for (let i = 0; i < (closed ? n : n - 1); i++) {
-    const p0 = pts[(i - 1 + n) % n], p1 = pts[i], p2 = pts[(i + 1) % n], p3 = pts[(i + 2) % n];
-    const a = closed || i > 0 ? p0 : p1, d = closed || i < n - 2 ? p3 : p2;
-    g.bezierCurveTo(p1[0] + (p2[0] - a[0]) / 6, p1[1] + (p2[1] - a[1]) / 6, p2[0] - (d[0] - p1[0]) / 6, p2[1] - (d[1] - p1[1]) / 6, p2[0], p2[1]);
-  }
-}
-function paintFace(kind) {
-  const S = 1024;
-  const cv = document.createElement('canvas');
-  cv.width = cv.height = S;
-  const g = cv.getContext('2d');
-  const P = (u, v) => [(u * 0.5 + 0.5) * S, (0.5 - v * 0.5) * S];
-  const L = (r) => r * 0.5 * S;
-  const spot = (u, v, r, rgb, a, sx = 1, sy = 1, rot = 0) => {
-    const [x, y] = P(u, v);
-    g.save();
-    g.translate(x, y);
-    g.rotate(rot);
-    g.scale(sx, sy);
-    const grd = g.createRadialGradient(0, 0, 0, 0, 0, L(r));
-    grd.addColorStop(0, `rgba(${rgb},${a})`);
-    grd.addColorStop(1, `rgba(${rgb},0)`);
-    g.fillStyle = grd;
-    g.beginPath();
-    g.arc(0, 0, L(r), 0, PI * 2);
-    g.fill();
-    g.restore();
+function scarfEnds(rig, mat) {
+  const group = new THREE.Group();
+  rig.body.add(group);
+  const fringeMat = mat.clone();
+  fringeMat.alphaMap = fringeTexture();
+  fringeMat.alphaTest = 0.5;
+  fringeMat.normalMap = null;
+  const front = (x, y, lift) => {
+    let th = 0, r = 0.2;
+    for (let i = 0; i < 3; i++) { r = torsoR(th, y, 0.03); th = Math.asin(clamp(x / r, -0.99, 0.99)); }
+    return new THREE.Vector3(x, y, torsoZ(y) + r * Math.cos(th) + lift);
   };
-  const both = (fn) => { fn(1); fn(-1); };
-  if (kind === 'blush') {
-    g.fillStyle = '#000';
-    g.fillRect(0, 0, S, S);
-    both((s) => spot(0.5 * s, -0.17, 0.24, '255,255,255', 1, 1.15, 0.85));
-    both((s) => spot(0.3 * s, -0.25, 0.1, '255,255,255', 0.5));
-    return cv;
+  for (const [x0, x1, y1, w, seed] of [[-0.13, -0.16, 1.95, 0.16, 1], [0.1, 0.13, 2.12, 0.15, 2]]) {
+    const y0 = 2.55, rows = 30, cols = 10;
+    const pt = (u, v, out) => {
+      const y = lerp(y0, y1, v), cx = lerp(x0, x1, v) + 0.012 * Math.sin(v * 5 + seed);
+      const x = cx + (u - 0.5) * w * (0.9 + 0.15 * v);
+      const p = front(x, y, 0.022 + 0.01 * v);
+      p.z += 0.012 * Math.sin(u * PI * 3 + seed + v * 2) * (0.4 + v) + 0.01 * Math.sin(u * PI) * v;
+      return out.copy(p);
+    };
+    const geo = surface(cols, rows, (i, j, p) => { pt(i / cols, j / rows, p); return [i / cols * 1.5, j / rows * 4]; }, { flip: true });
+    skinWeights(geo, (i, p) => [[rig.B.chest, smooth(1.9, 2.3, p.y)], [rig.B.spine, 1 - smooth(1.9, 2.3, p.y)]]);
+    rig.skinned(geo, mat, { parent: group });
+    // fringe card under the end
+    const fg = surface(cols, 2, (i, j, p) => { pt(i / cols, 1, p); p.y -= (j / 2) * 0.055; p.z += 0.004 * j; return [i / cols, 1 - j / 2]; }, { flip: true });
+    skinWeights(fg, () => [[rig.B.spine, 1]]);
+    const fm = rig.skinned(fg, fringeMat, { parent: group, shadow: false });
+    fm.material.side = THREE.DoubleSide;
   }
-  g.fillStyle = '#f8ddcd';
-  g.fillRect(0, 0, S, S);
-  // gentle depth toward the hijab edge
-  {
-    const [x, y] = P(0, -0.08);
-    const grd = g.createRadialGradient(x, y, L(0.5), x, y, L(1.02));
-    grd.addColorStop(0, 'rgba(176,112,96,0)');
-    grd.addColorStop(1, 'rgba(176,112,96,0.38)');
-    g.fillStyle = grd;
-    g.fillRect(0, 0, S, S);
-  }
-  spot(0, 0.45, 0.3, '255,246,238', 0.4, 1.4, 0.8);
-  both((s) => spot(0.5 * s, -0.22, 0.2, '238,128,128', 0.17, 1.2, 0.9));
-  both((s) => spot(0.63 * s, -0.38, 0.18, '186,116,100', 0.13, 0.9, 0.7, 0.4 * s));
-  both((s) => spot(0.36 * s, 0.15, 0.16, '178,108,100', 0.2, 1.35, 0.85));
-  both((s) => spot(0.39 * s, 0.22, 0.11, '205,140,140', 0.14, 1.4, 0.6));
-  both((s) => spot(0.35 * s, -0.03, 0.12, '255,242,234', 0.28, 1.4, 0.55));
-  both((s) => spot(0.095 * s, -0.06, 0.09, '192,128,112', 0.1, 0.5, 1.5));
-  spot(0, -0.05, 0.07, '255,248,242', 0.4, 0.32, 1.8);
-  spot(0, -0.19, 0.035, '255,252,248', 0.45);
-  both((s) => spot(0.05 * s, -0.258, 0.027, '112,58,56', 0.75, 1.25, 0.6, 0.45 * s));
-  spot(0, -0.285, 0.055, '168,104,94', 0.2, 1.7, 0.55);
-  spot(0, -0.73, 0.1, '255,242,234', 0.28);
-  spot(0, -0.575, 0.08, '178,108,98', 0.22, 1.7, 0.5);
-
-  // lips
-  const grin = kind === 'grin';
-  const cy = grin ? -0.428 : -0.439, cx = grin ? 0.25 : 0.225;
-  const upperTop = [[-cx, cy], [-0.125, -0.41], [-0.054, -0.386], [0, -0.398], [0.054, -0.386], [0.125, -0.41], [cx, cy]];
-  const lowerBot = [[cx, cy], [0.125, -0.503], [0, grin ? -0.543 : -0.531], [-0.125, -0.503], [-cx, cy]];
-  const px = (arr) => arr.map(([u, v]) => P(u, v));
-  g.save();
-  g.filter = 'blur(1.4px)';
-  if (!grin) {
-    const seam = [[-cx, cy], [-0.105, -0.448], [0, -0.444], [0.105, -0.448], [cx, cy]];
-    g.fillStyle = '#c56c76';
-    g.beginPath();
-    smoothPath(g, px([...upperTop, ...seam.slice().reverse().slice(1, -1)]), true);
-    g.fill();
-    g.fillStyle = '#d27d86';
-    g.beginPath();
-    smoothPath(g, px([...seam, ...lowerBot.slice(1, -1)]), true);
-    g.fill();
-    spot(0, -0.49, 0.06, '255,222,222', 0.4, 1.7, 0.6);
-    spot(0, -0.405, 0.03, '255,222,222', 0.25, 1.8, 0.6);
-    g.filter = 'blur(0.8px)';
-    g.strokeStyle = '#7b3540';
-    g.lineWidth = 3.2;
-    g.lineCap = 'round';
-    g.beginPath();
-    smoothPath(g, px(seam));
-    g.stroke();
-    both((s) => spot((cx + 0.012) * s, cy + 0.004, 0.018, '150,80,80', 0.5));
-  } else {
-    const openTop = [[-cx, cy], [-0.115, -0.433], [0, -0.429], [0.115, -0.433], [cx, cy]];
-    const openBot = [[cx, cy], [0.115, -0.48], [0, -0.5], [-0.115, -0.48], [-cx, cy]];
-    g.fillStyle = '#c56c76';
-    g.beginPath();
-    smoothPath(g, px([...upperTop, ...openTop.slice().reverse().slice(1, -1)]), true);
-    g.fill();
-    g.fillStyle = '#d27d86';
-    g.beginPath();
-    smoothPath(g, px([...openBot, ...lowerBot.slice().reverse().slice(1, -1)]), true);
-    g.fill();
-    spot(0, -0.517, 0.05, '255,222,222', 0.35, 1.8, 0.5);
-    g.filter = 'none';
-    g.save();
-    g.beginPath();
-    smoothPath(g, px([...openTop, ...openBot.slice(1, -1)]), true);
-    g.clip();
-    g.fillStyle = '#5a2130';
-    g.fillRect(0, 0, S, S);
-    g.fillStyle = '#fbf6f1';
-    g.beginPath();
-    smoothPath(g, px([[-cx, cy], [-0.115, -0.431], [0, -0.427], [0.115, -0.431], [cx, cy], [0.135, -0.455], [0, -0.463], [-0.135, -0.455]]), true);
-    g.fill();
-    g.strokeStyle = 'rgba(170,150,150,0.55)';
-    g.lineWidth = 1.2;
-    for (const u of [-0.14, -0.085, -0.03, 0.03, 0.085, 0.14]) {
-      const [x1, y1] = P(u, -0.429);
-      const [, y2] = P(u, -0.458);
-      g.beginPath();
-      g.moveTo(x1, y1);
-      g.lineTo(x1, y2);
-      g.stroke();
-    }
-    spot(0, -0.49, 0.06, '210,90,110', 0.6, 1.6, 0.5);
-    g.restore();
-  }
-  g.restore();
-
-  // brows: thick and softly arched, drawn hair by hair
-  const browLine = [[0.11, 0.245], [0.2, 0.285], [0.32, 0.318], [0.43, 0.322], [0.565, 0.284]];
-  const thick = [0.05, 0.046, 0.04, 0.03, 0.012];
-  let seed = 7;
-  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-  both((s) => {
-    const up = [], dn = [];
-    browLine.forEach(([u, v], i) => {
-      const [u2, v2] = browLine[Math.min(i + 1, browLine.length - 1)], [u0, v0] = browLine[Math.max(i - 1, 0)];
-      const tx = u2 - u0, ty = v2 - v0, len = Math.hypot(tx, ty);
-      const nx = -ty / len, ny = tx / len;
-      up.push([(u + nx * thick[i] / 2) * s, v + ny * thick[i] / 2]);
-      dn.push([(u - nx * thick[i] / 2) * s, v - ny * thick[i] / 2]);
-    });
-    g.save();
-    g.filter = 'blur(2px)';
-    g.fillStyle = 'rgba(44,27,19,0.78)';
-    g.beginPath();
-    smoothPath(g, px([...up, ...dn.reverse()]), true);
-    g.fill();
-    g.filter = 'blur(0.4px)';
-    g.lineCap = 'round';
-    for (let k = 0; k < 170; k++) {
-      const t = rnd() * 0.98, seg = t * (browLine.length - 1), i = Math.floor(seg), f = seg - i;
-      const a = browLine[i], b = browLine[i + 1];
-      const u = lerp(a[0], b[0], f), v = lerp(a[1], b[1], f);
-      const th = lerp(thick[i], thick[i + 1], f);
-      const off = (rnd() - 0.5) * th * 0.9;
-      const ang = t < 0.25 ? 1.2 - t * 2 : Math.atan2(b[1] - a[1], b[0] - a[0]) + 0.25;
-      const len = 0.018 + rnd() * 0.016;
-      const [x1, y1] = P(u * s, v + off);
-      const [x2, y2] = P((u + Math.cos(ang) * len) * s, v + off + Math.sin(ang) * len);
-      g.strokeStyle = `rgba(${28 + rnd() * 20},${16 + rnd() * 10},${10 + rnd() * 6},${0.55 + rnd() * 0.35})`;
-      g.lineWidth = 1.3 + rnd() * 1.1;
-      g.beginPath();
-      g.moveTo(x1, y1);
-      g.lineTo(x2, y2);
-      g.stroke();
-    }
-    g.restore();
-  });
-
-  // a little dark hair just under the hijab edge
-  g.save();
-  g.filter = 'blur(5px)';
-  g.strokeStyle = 'rgba(42,26,18,0.9)';
-  g.lineWidth = L(0.07);
-  g.beginPath();
-  for (let k = 0; k <= 40; k++) {
-    const th = lerp(0.35, PI - 0.35, k / 40);
-    const r = openR(th) * 1.0;
-    const [x, y] = P(Math.cos(th) * r, OPEN.vc + Math.sin(th) * r);
-    if (k) g.lineTo(x, y); else g.moveTo(x, y);
-  }
-  g.stroke();
-  g.restore();
-  return cv;
+  return { group, fringeMat };
 }
-
-function irisTexture() {
-  const W = 256, H = 256;
-  const cv = document.createElement('canvas');
-  cv.width = W;
-  cv.height = H;
-  const g = cv.getContext('2d');
-  const row = (th) => (th / PI) * H;
-  const grd = g.createLinearGradient(0, 0, 0, H);
-  const stops = [[0, '#080404'], [0.19, '#0c0605'], [0.2, '#6f4426'], [0.33, '#55321c'], [0.5, '#3a2112'], [0.55, '#201209'], [0.6, '#f6f0ec'], [1.5, '#f4ebe6'], [PI, '#e9cfc8']];
-  stops.forEach(([th, c]) => grd.addColorStop(Math.min(1, row(th) / H), c));
-  g.fillStyle = grd;
-  g.fillRect(0, 0, W, H);
-  let seed = 3;
-  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-  for (let k = 0; k < 220; k++) {
-    const x = rnd() * W;
-    g.fillStyle = rnd() < 0.5 ? `rgba(170,110,60,${0.15 + rnd() * 0.2})` : `rgba(20,10,5,${0.15 + rnd() * 0.25})`;
-    g.fillRect(x, row(0.2), 1 + rnd() * 1.5, row(0.55) - row(0.2));
-  }
-  const tex = new THREE.CanvasTexture(cv);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  return tex;
-}
-
-function buildHead(head, hijabMat) {
-  const tex = (cv) => { const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t; };
-  const smileTex = tex(paintFace('smile'));
-  const grinTex = tex(paintFace('grin'));
-  const blushTex = tex(paintFace('blush'));
-
-  // the face surface, as a dense grid over the front of the head
-  const N = 176;
-  const pos = new Float32Array((N + 1) * (N + 1) * 3);
-  const grinPos = new Float32Array(pos.length);
-  const uv = new Float32Array((N + 1) * (N + 1) * 2);
-  const idx = [];
-  const tmp = new THREE.Vector3();
-  const lim = 0.985;
-  for (let j = 0; j <= N; j++) {
-    for (let i = 0; i <= N; i++) {
-      let u = -1 + (2 * i) / N, v = -1 + (2 * j) / N;
-      const r = Math.hypot(u, v);
-      if (r > lim) { u *= lim / r; v *= lim / r; }
-      const k = j * (N + 1) + i;
-      basePoint(u, v, toFront(u, v), 0, tmp).toArray(pos, k * 3);
-      basePoint(u, v, toFront(u, v), 1, tmp).toArray(grinPos, k * 3);
-      uv[k * 2] = u * 0.5 + 0.5;
-      uv[k * 2 + 1] = v * 0.5 + 0.5;
-    }
-  }
-  const inside = (i, j) => Math.hypot(-1 + (2 * i) / N, -1 + (2 * j) / N) < lim;
-  for (let j = 0; j < N; j++) {
-    for (let i = 0; i < N; i++) {
-      if (!(inside(i, j) && inside(i + 1, j) && inside(i, j + 1) && inside(i + 1, j + 1))) continue;
-      const a = j * (N + 1) + i, b = a + 1, c = a + N + 1, d = c + 1;
-      idx.push(a, b, d, a, d, c);
-    }
-  }
-  const faceGeo = new THREE.BufferGeometry();
-  faceGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  faceGeo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
-  faceGeo.setIndex(idx);
-  faceGeo.computeVertexNormals();
-  const grinGeo = new THREE.BufferGeometry();
-  grinGeo.setAttribute('position', new THREE.BufferAttribute(grinPos, 3));
-  grinGeo.setIndex(idx);
-  grinGeo.computeVertexNormals();
-  faceGeo.morphAttributes.position = [grinGeo.attributes.position];
-  faceGeo.morphAttributes.normal = [grinGeo.attributes.normal];
-  const faceMat = new THREE.MeshPhysicalMaterial({
-    map: smileTex, roughness: 0.6, sheen: 0.35, sheenRoughness: 0.55, sheenColor: new THREE.Color(0xffb7a6),
-    emissive: new THREE.Color(0xff6f8f), emissiveMap: blushTex, emissiveIntensity: 0.05,
-  });
-  const face = new THREE.Mesh(faceGeo, faceMat);
-  face.morphTargetInfluences = [0];
-  face.receiveShadow = true;
-  head.add(face);
-
-  // the hijab: an offset of the head, snapped exactly to the face opening, with soft folds
-  const shellGeo = new THREE.SphereGeometry(1, 128, 96);
-  {
-    const p = shellGeo.attributes.position;
-    const d = new THREE.Vector3(), n = new THREE.Vector3(), out = new THREE.Vector3();
-    for (let k = 0; k < p.count; k++) {
-      d.fromBufferAttribute(p, k).normalize();
-      let { x: dx, y: dy, z: dz } = d;
-      let th = 0.028 + 0.01 * smooth(0.3, 1, dy) + 0.03 * smooth(0, -0.8, dz) * smooth(-0.6, 0.4, dy);
-      let m = 9;
-      if (dz > 0) {
-        m = openMask(dx, dy);
-        if (m < 1) {
-          const u = dx / m, v = OPEN.vc + (dy - OPEN.vc) / m;
-          dx = u; dy = v; dz = toFront(u, v);
-          th = 0.005;
-        } else th = lerp(0.005, th, smooth(1.0, 1.65, m));
-      }
-      const az = Math.atan2(dx, dz);
-      th += 0.0035 * Math.sin(az * 13 + dy * 4) * smooth(0.1, -0.7, dy) * smooth(1.3, 2.1, m);
-      basePoint(dx, dy, dz, 0, out).addScaledVector(surfNormal(dx, dy, dz, n), th);
-      p.setXYZ(k, out.x, out.y, out.z);
-    }
-    shellGeo.computeVertexNormals();
-  }
-  const shell = new THREE.Mesh(shellGeo, hijabMat);
-  shell.castShadow = true;
-  head.add(shell);
-  // a soft rolled edge where the fabric meets the face
-  const rimPts = [];
-  for (let k = 0; k < 120; k++) {
-    const th = (k / 120) * PI * 2, r = openR(th);
-    const u = Math.cos(th) * r, v = OPEN.vc + Math.sin(th) * r;
-    rimPts.push(basePoint(u, v, toFront(u, v)).addScaledVector(surfNormal(u, v, toFront(u, v)), 0.009));
-  }
-  head.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(rimPts, true), 240, 0.0085, 10, true), hijabMat));
-
-  // eyes: glossy eyeballs, upper and lower lids, lashes
-  const r = 0.035;
-  const irisTex = irisTexture();
-  const eyeMat = new THREE.MeshPhysicalMaterial({ map: irisTex, roughness: 0.12, clearcoat: 1, clearcoatRoughness: 0.04 });
-  const lidMat = std(0xefc6b4, { roughness: 0.6 });
-  const lashMat = std(0x160d09, { roughness: 0.55 });
-  const lowLashMat = new THREE.MeshBasicMaterial({ color: 0x5a3426, transparent: true, opacity: 0.55, depthWrite: false });
-  const catchMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 });
-  const ballGeo = new THREE.SphereGeometry(r, 40, 24);
-  ballGeo.rotateX(PI / 2);
-  const upperGeo = new THREE.SphereGeometry(r * 1.075, 40, 18, 0, PI * 2, 0, PI * 0.56);
-  const lowerGeo = new THREE.SphereGeometry(r * 1.05, 40, 10, 0, PI * 2, PI * 0.6, PI * 0.4);
-  const onLid = (R, th, a) => new THREE.Vector3(R * Math.sin(a) * Math.sin(th), R * Math.cos(th), R * Math.cos(a) * Math.sin(th));
-  const eyes = [];
-  for (const side of [-1, 1]) {
-    const socket = new THREE.Group();
-    socket.position.copy(basePoint(0.36 * side, 0.1, toFront(0.36, 0.1))).add(new THREE.Vector3(0, 0, -r * 0.6));
-    socket.rotation.set(0, side * 0.16, side * 0.06);
-    head.add(socket);
-    const look = new THREE.Group();
-    socket.add(look);
-    look.add(new THREE.Mesh(ballGeo, eyeMat));
-    const catchlight = new THREE.Mesh(new THREE.CircleGeometry(r * 0.12, 16), catchMat);
-    catchlight.position.set(r * 0.26, r * 0.28, r * 1.0);
-    socket.add(catchlight);
-    const upper = new THREE.Group();
-    socket.add(upper);
-    upper.add(new THREE.Mesh(upperGeo, lidMat));
-    const lashPts = [];
-    for (let k = 0; k <= 24; k++) lashPts.push(onLid(r * 1.09, PI * 0.56, lerp(-1.35, 1.35, k / 24)));
-    const tip = lashPts[side > 0 ? 24 : 0];
-    const wing = side > 0 ? [tip, tip.clone().add(new THREE.Vector3(r * 0.25, r * 0.1, -r * 0.06)), tip.clone().add(new THREE.Vector3(r * 0.42, r * 0.26, -r * 0.12))]
-      : [tip.clone().add(new THREE.Vector3(-r * 0.42, r * 0.26, -r * 0.12)), tip.clone().add(new THREE.Vector3(-r * 0.25, r * 0.1, -r * 0.06)), tip];
-    upper.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(lashPts), 48, r * 0.075, 6), lashMat));
-    upper.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(wing), 12, r * 0.055, 6), lashMat));
-    const lashGeo = new THREE.ConeGeometry(r * 0.03, r * 0.34, 5);
-    lashGeo.translate(0, r * 0.17, 0);
-    for (let k = 0; k < 9; k++) {
-      const a = side * lerp(-0.2, 1.3, k / 8);
-      const base = onLid(r * 1.09, PI * 0.56, a);
-      const out = onLid(1, PI * 0.5, a).add(new THREE.Vector3(0, 0.9, 0.5)).normalize();
-      const lash = new THREE.Mesh(lashGeo, lashMat);
-      lash.position.copy(base);
-      lash.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), out);
-      lash.scale.setScalar(lerp(0.75, 1.25, k / 8));
-      upper.add(lash);
-    }
-    const lower = new THREE.Group();
-    socket.add(lower);
-    lower.add(new THREE.Mesh(lowerGeo, lidMat));
-    const lowPts = [];
-    for (let k = 0; k <= 16; k++) lowPts.push(onLid(r * 1.07, PI * 0.6, lerp(-1.0, 1.15, k / 16) * side));
-    lower.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(lowPts), 24, r * 0.03, 5), lowLashMat));
-    socket.traverse((o) => { o.castShadow = false; });
-    eyes.push({ side, look, upper, lower, catchlight });
-  }
-
-  const W = { grin: 0, open: 1, low: 0 };
-  const goal = { grin: 0, open: 1, low: 0 };
-  let expression = 'smile';
-  return {
-    setExpression(name) {
-      expression = name;
-      goal.grin = name === 'smile' ? 0 : 1;
-      goal.open = name === 'happy' ? 0.12 : name === 'grin' ? 0.86 : 1;
-      goal.low = name === 'happy' ? 1 : name === 'grin' ? 0.35 : 0;
-    },
-    update(dt, { open = [1, 1], lookX = 0, lookY = 0, blush = 0 } = {}) {
-      for (const k in W) W[k] = damp(W[k], goal[k], 12, dt);
-      face.morphTargetInfluences[0] = W.grin;
-      const map = W.grin > 0.5 ? grinTex : smileTex;
-      if (faceMat.map !== map) faceMat.map = map;
-      faceMat.emissiveIntensity = 0.05 + blush * 0.55;
-      eyes.forEach((e, i) => {
-        const o = clamp(open[i] * W.open, 0, 1);
-        e.upper.rotation.x = lerp(0.15, -0.7, o);
-        e.lower.rotation.x = lerp(0, -0.24, W.low);
-        e.catchlight.visible = o > 0.4;
-        e.look.rotation.set(-lookY * 0.22, lookX * 0.32 - e.side * 0.16, 0);
-      });
-    },
-    get expression() { return expression; },
-  };
+// a small leather cross-body bag
+function crossBag(rig) {
+  const group = new THREE.Group();
+  rig.body.add(group);
+  const leather = new THREE.MeshPhysicalMaterial({ color: 0x7a4a2c, roughness: 0.5, clearcoat: 0.35, clearcoatRoughness: 0.4, normalMap: weave('leather', [3, 3]), normalScale: new THREE.Vector2(0.4, 0.4) });
+  const on = (x, y, lift) => { const th = Math.asin(clamp(x / 0.36, -0.99, 0.99)); const r = Math.max(torsoR(th, y, 0.04), 0.3); return new THREE.Vector3(r * Math.sin(th), y, torsoZ(y) + r * Math.cos(th) + lift); };
+  const pts = [];
+  for (let k = 0; k <= 16; k++) { const t = k / 16; pts.push(on(lerp(0.3, -0.25, t), lerp(1.7, 2.6, t), 0.01)); }
+  pts.push(new THREE.Vector3(-0.27, 2.68, 0.02), new THREE.Vector3(-0.28, 2.7, -0.08), new THREE.Vector3(-0.22, 2.55, -0.17));
+  const strap = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 60, 0.01, 6);
+    skinWeights(strap, (i, p) => [[rig.B.chest, smooth(1.95, 2.3, p.y)], [rig.B.hips, 1 - smooth(1.95, 2.3, p.y)]]);
+  rig.skinned(strap, leather, { parent: group });
+  const bagG = new THREE.BoxGeometry(0.2, 0.15, 0.06, 6, 4, 2);
+  const p = bagG.attributes.position;
+  for (let i = 0; i < p.count; i++) { const x = p.getX(i), z = p.getZ(i); p.setZ(i, z * (1 - 0.35 * Math.abs(x / 0.1) ** 3)); }
+  bagG.computeVertexNormals();
+  const c = on(0.33, 1.6, 0.05);
+  bagG.rotateY(0.7);
+  bagG.translate(c.x, c.y, c.z);
+  skinWeights(bagG, () => [[rig.B.hips, 1]]);
+  rig.skinned(bagG, leather, { parent: group });
+  const flap = new THREE.BoxGeometry(0.205, 0.075, 0.066);
+  flap.rotateY(0.7);
+  flap.translate(c.x, c.y + 0.04, c.z + 0.002);
+  skinWeights(flap, () => [[rig.B.hips, 1]]);
+  rig.skinned(flap, new THREE.MeshPhysicalMaterial({ color: 0x5f3820, roughness: 0.45, clearcoat: 0.4 }), { parent: group });
+  return group;
 }
 
 export function createRajiea(container, { bubble, lines = [], badge = 'Dr. Rajiea', view, fixed = false, extend } = {}) {
-  const FULL = { dist: 9.4, camY: 2.1, lookY: 1.78 };
-  const CLOSE = { dist: 1.6, camY: 2.98, lookY: 2.94 };
+  const FULL = { dist: 8.3, camY: 2.15, lookY: 1.86 };
+  const CLOSE = { dist: 1.5, camY: 3.06, lookY: 3.0 };
   const stage = createStage(container, { ...FULL, podium: 0.78, shadowTop: 4, ...view });
   const { scene } = stage;
   stage.canvas.setAttribute('aria-label', '3D Rajiea. Drag to turn her, tap her for a surprise.');
@@ -926,127 +576,62 @@ export function createRajiea(container, { bubble, lines = [], badge = 'Dr. Rajie
   const body = new THREE.Group();
   char.add(body);
   scene.add(char);
+  char.add(contactShadow(1.0, 0.8, 0.5));
 
-  const skin = std(COL.skin, { roughness: 0.6 });
-  const topMat = std(COL.coat, { roughness: 0.72 });
-  const cuffMat = std(COL.pink, { roughness: 0.5 });
-  const pink = std(COL.pink, { roughness: 0.45 });
-  const shoeMat = std(COL.shoe, { roughness: 0.5 });
-  const hijabMat = new THREE.MeshPhysicalMaterial({
-    color: 0x26222a, roughness: 0.82, sheen: 1, sheenRoughness: 0.45, sheenColor: new THREE.Color(0x6a6070), side: THREE.DoubleSide,
-  });
-  const torso = (pts, sx = 1.25, sz = 0.8) => add(body, lathe(pts), topMat, [0, 0, 0], [0, 0, 0], [sx, 1, sz]);
+  // skeleton, clothes and hands
+  const rig = buildSkeleton(body);
+  rig.body = body;
+  const wardrobe = dress(rig, { badge });
+  const { groups, mats } = wardrobe;
+  const skinMat = skinMaterial({ color: 0xf1cdb9, roughness: 0.5 });
+  const nailMat = new THREE.MeshPhysicalMaterial({ color: 0xf4cbc6, roughness: 0.3, clearcoat: 0.9, clearcoatRoughness: 0.1 });
+  for (const side of [-1, 1]) { rig.skinned(rig.hands[side].skinGeo, skinMat); rig.skinned(rig.hands[side].nailGeo, nailMat, { shadow: false }); }
+  const bone = (n) => rig.bones[rig.B[n]];
+  const neck = bone('neck'), head = bone('head'), hips = bone('hips'), spine = bone('spine'), chest = bone('chest'), breath = bone('breath');
+  const armR = rig.arms[-1], armL = rig.arms[1];
+  for (const a of [armR, armL]) a.elbow.rotation.order = 'XZY';
 
-  // Legs: slim jeans, or wide black trousers for the city look
-  const jeans = new THREE.Group(), wide = new THREE.Group();
-  body.add(jeans, wide);
-  const denim = std(COL.jeans, { roughness: 0.85 });
-  const black = std(0x1d1b20, { roughness: 0.8, side: THREE.DoubleSide });
-  add(jeans, new THREE.SphereGeometry(0.2, 24, 16), denim, [0, 1.58, 0], [0, 0, 0], [1.1, 0.62, 0.75]);
-  add(wide, new THREE.SphereGeometry(0.21, 24, 16), black, [0, 1.58, 0], [0, 0, 0], [1.1, 0.65, 0.78]);
-  for (const x of [-0.1, 0.1]) {
-    add(jeans, new THREE.CylinderGeometry(0.1, 0.068, 1.5, 16), denim, [x, 0.84, 0]);
-    add(wide, new THREE.CylinderGeometry(0.115, 0.16, 1.52, 18, 1, true), black, [x * 1.1, 0.82, 0]);
-    add(body, new THREE.SphereGeometry(0.075, 18, 12), shoeMat, [x, 0.05, 0.05], [0, 0, 0], [1, 0.7, 1.9]);
-  }
+  // head: sculpted face, eyes and mouth (built in centimetres)
+  const headRig = new THREE.Group();
+  const HK = L.k * 1.05;
+  headRig.scale.setScalar(HK);
+  headRig.position.set(L.head.x - L.headPivot[0], L.head.y - L.headPivot[1], L.head.z - L.headPivot[2]);
+  head.add(headRig);
+  const fit = opening(undefined, 0.8);
+  const face = buildHead(headRig, ADULT, { keep: (x, y) => fit.inside(x, y) });
 
-  // Tops: white coat (clinic) or a shorter top (city / cozy)
-  const coat = torso([[0, 0.92], [0.24, 0.92], [0.25, 1.0], [0.22, 1.4], [0.18, 1.8], [0.2, 2.1], [0.23, 2.38], [0.2, 2.55], [0.1, 2.65], [0, 2.67]]);
-  const coatBits = new THREE.Group();
-  body.add(coatBits);
-  add(coatBits, new THREE.TorusGeometry(0.25, 0.012, 8, 64), pink, [0, 0.96, 0], [PI / 2, 0, 0], [1.25, 0.8, 1]);
-  for (const x of [-0.15, 0.15]) {
-    const pocket = new THREE.Group();
-    pocket.position.set(x, 1.22, 0.172);
-    pocket.rotation.y = x * 2.2;
-    add(pocket, new THREE.BoxGeometry(0.12, 0.1, 0.012), std(COL.coatShade, { roughness: 0.8 }));
-    add(pocket, new THREE.BoxGeometry(0.12, 0.016, 0.016), pink, [0, 0.05, 0.002]);
-    coatBits.add(pocket);
-  }
-  for (const y of [1.3, 1.55, 1.8]) add(coatBits, new THREE.SphereGeometry(0.016, 10, 8), pink, [0, y, y < 1.5 ? 0.18 : 0.148]);
-  const badgeMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.15, 0.056), new THREE.MeshStandardMaterial({ map: badgeTexture(badge), transparent: true, roughness: 0.5 }));
-  badgeMesh.position.set(0.11, 2.12, 0.172);
-  badgeMesh.rotation.y = 0.3;
-  coatBits.add(badgeMesh);
-  const top = torso([[0, 1.48], [0.2, 1.48], [0.205, 1.56], [0.18, 1.8], [0.2, 2.1], [0.23, 2.38], [0.2, 2.55], [0.1, 2.65], [0, 2.67]]);
-  const rib = add(body, new THREE.TorusGeometry(0.205, 0.02, 8, 64), cuffMat, [0, 1.5, 0], [PI / 2, 0, 0], [1.3, 0.9, 1]);
+  // hijab: draped cloth with a soft sheen and a rolled edge round the face
+  const hijabMat = clothMaterial({ color: 0x26222a, roughness: 0.9, sheen: 0.85, sheenRoughness: 0.5, sheenTint: 0.42, specularIntensity: 0.18, normalMap: weave('jersey', [26, 26]), normalScale: 0.45, side: THREE.DoubleSide });
+  rig.skinned(hijabGeometry(face.sc, { torso: { R: torsoR, Z: torsoZ, shoulder: L.shoulder }, O: L.head, k: HK, B: rig.B }), hijabMat);
+  const rim = new THREE.Mesh(hijabRim(face.sc), hijabMat);
+  rim.castShadow = true;
+  headRig.add(rim);
+  const ends = scarfEnds(rig, hijabMat);
+  const bag = crossBag(rig);
 
-  // Hijab wrap: hugs the neck and stops at the collar
-  add(body, lathe([[0.05, 2.84], [0.105, 2.76], [0.125, 2.66], [0.145, 2.58], [0.18, 2.53], [0.165, 2.5]]), hijabMat, [0, 0, 0], [0, 0, 0], [1.05, 1, 1]);
+  // props sit in the palm; they stay upright whatever the arm does
+  const grip = (a, side, x, y, z) => { const g = new THREE.Group(); g.position.set(x * side, y, z); a.hand.add(g); return g; };
+  const gripL = grip(armL, 1, -0.045, -0.125, 0.0), gripR = grip(armR, -1, -0.045, -0.125, 0.0);
+  const brush = makeBrush();
+  gripL.add(brush);
+  const cup = makeCup();
+  const cupHold = new THREE.Group();
+  cupHold.position.set(-0.03, -0.02, 0);
+  cupHold.add(cup);
+  gripL.add(cupHold);
+  const brew = cup.userData.brew;
+  const phone = makePhone();
+  gripR.add(phone);
+  const gold = new THREE.MeshPhysicalMaterial({ color: 0xe6b866, metalness: 1, roughness: 0.22, clearcoat: 0.4 });
+  const bangle = new THREE.Mesh(new THREE.TorusGeometry(0.052, 0.006, 10, 48), gold);
+  bangle.rotation.x = PI / 2;
+  bangle.position.set(0.003, -L.fore + 0.03, 0);
+  bangle.scale.set(0.84, 1.08, 1);
+  armL.elbow.add(bangle);
 
-  // City: scarf ends with a fringe, and a brown crossbody bag
-  const scarf = new THREE.Group();
-  body.add(scarf);
-  for (const [x, len, tilt] of [[-0.09, 0.62, 0.05], [0.07, 0.5, -0.04]]) {
-    const tail = new THREE.Group();
-    tail.position.set(x, 2.55, 0.17);
-    tail.rotation.set(-0.08, 0, tilt);
-    add(tail, new THREE.BoxGeometry(0.11, len, 0.02), hijabMat, [0, -len / 2, 0]);
-    for (let i = 0; i < 6; i++) add(tail, new THREE.CylinderGeometry(0.004, 0.003, 0.05, 4), hijabMat, [-0.045 + i * 0.018, -len - 0.022, 0], [0, 0, (i - 2.5) * 0.05], [1, 1, 1], false);
-    scarf.add(tail);
-  }
-  const bag = new THREE.Group();
-  body.add(bag);
-  const leather = std(0x7a4a2c, { roughness: 0.55 });
-  const bagBody = new THREE.Group();
-  bagBody.position.set(0.28, 1.58, 0.08);
-  bagBody.rotation.y = 0.5;
-  add(bagBody, new THREE.BoxGeometry(0.15, 0.12, 0.05), leather);
-  add(bagBody, new THREE.BoxGeometry(0.152, 0.055, 0.054), std(0x5f3820, { roughness: 0.5 }), [0, 0.035, 0.002]);
-  bag.add(bagBody);
-  add(bag, new THREE.TubeGeometry(new THREE.CatmullRomCurve3([
-    new THREE.Vector3(0.28, 1.64, 0.08), new THREE.Vector3(0.15, 1.9, 0.17), new THREE.Vector3(-0.06, 2.2, 0.185), new THREE.Vector3(-0.2, 2.42, 0.13), new THREE.Vector3(-0.24, 2.52, 0),
-  ]), 32, 0.009, 6), leather);
-
-  // Arms with elbows
-  function makeArm(side) {
-    const shoulder = new THREE.Group();
-    shoulder.position.set(0.27 * side, 2.47, 0);
-    add(shoulder, new THREE.SphereGeometry(0.075, 16, 12), topMat, [0, 0, 0]);
-    add(shoulder, new THREE.CapsuleGeometry(0.062, 0.4, 6, 12), topMat, [0, -0.24, 0]);
-    const elbow = new THREE.Group();
-    elbow.position.set(0, -0.48, 0);
-    shoulder.add(elbow);
-    add(elbow, new THREE.CapsuleGeometry(0.055, 0.34, 6, 12), topMat, [0, -0.2, 0]);
-    add(elbow, new THREE.TorusGeometry(0.052, 0.016, 8, 20), cuffMat, [0, -0.39, 0], [PI / 2, 0, 0]);
-    add(elbow, new THREE.SphereGeometry(0.052, 16, 12), skin, [0, -0.47, 0], [0, 0, 0], [0.85, 1.25, 0.6]);
-    const hand = new THREE.Group();
-    hand.position.set(0, -0.47, 0.01);
-    elbow.add(hand);
-    body.add(shoulder);
-    return { shoulder, elbow, hand };
-  }
-  const armR = makeArm(-1); // her right, on the viewer's left
-  const armL = makeArm(1);
-  add(armL.elbow, new THREE.TorusGeometry(0.05, 0.008, 8, 20), goldMat(), [0, -0.415, 0], [PI / 2, 0, 0]);
-
-  // Props
-  const brush = new THREE.Group();
-  add(brush, new THREE.CylinderGeometry(0.024, 0.028, 0.5, 12), pink, [0, 0.08, 0]);
-  add(brush, new THREE.BoxGeometry(0.06, 0.12, 0.03), std(0xffffff, { roughness: 0.3 }), [0, 0.38, 0]);
-  add(brush, new THREE.BoxGeometry(0.05, 0.1, 0.05), std(0x9fd8ff, { roughness: 0.9 }), [0, 0.385, 0.035]);
-  add(brush, new THREE.SphereGeometry(0.03, 12, 8), std(0xffffff, { roughness: 0.4 }), [0, 0.4, 0.075], [0, 0, 0], [0.9, 1.5, 0.8]);
-  armL.hand.add(brush);
-  const cup = new THREE.Group();
-  add(cup, new THREE.CylinderGeometry(0.05, 0.04, 0.14, 20), std(0xffffff, { roughness: 0.45 }), [0, 0.05, 0.03]);
-  const brew = add(cup, new THREE.CylinderGeometry(0.049, 0.044, 0.05, 20), std(0xb07f5c, { roughness: 0.8 }), [0, 0.045, 0.03]);
-  add(cup, new THREE.CylinderGeometry(0.054, 0.054, 0.02, 20), pink, [0, 0.13, 0.03]);
-  armL.hand.add(cup);
-  const phone = new THREE.Group();
-  add(phone, new THREE.BoxGeometry(0.09, 0.18, 0.014), std(0xe8213f, { roughness: 0.35 }), [0, 0.06, 0.02]);
-  add(phone, new THREE.BoxGeometry(0.035, 0.035, 0.008), std(0x2b2b33, { roughness: 0.3 }), [-0.018, 0.12, 0.03]);
-  armR.hand.add(phone);
-
-  // Head: sculpted face framed by the hijab
-  const head = new THREE.Group();
-  head.position.set(0, 2.66, 0);
-  head.scale.setScalar(1.1);
-  body.add(head);
-  const face = buildHead(head, hijabMat);
-
-  // invisible hit area so taps on her slim figure are easy
-  const hit = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 3.5, 12), new THREE.MeshBasicMaterial());
-  hit.position.y = 1.75;
+  // invisible hit area so taps on her are easy
+  const hit = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 3.4, 12), new THREE.MeshBasicMaterial());
+  hit.position.y = 1.7;
   hit.visible = false;
   char.add(hit);
 
@@ -1058,7 +643,7 @@ export function createRajiea(container, { bubble, lines = [], badge = 'Dr. Rajie
 
   const DUR = { wave: 2.2, jump: 1.0, spin: 1.3, dance: 3.2, wink: 1.1, floss: 3.2, candy: 2.4, sneeze: 1.7, dizzy: 2.6, blush: 2.4, selfie: 2.6, matcha: 3.0 };
   let outfit = 'clinic';
-  const cur = { r: { ...REST }, l: { ...POSES.clinic.l } };
+  const cur = { r: { ...REST }, l: { ...POSES.clinic.l } }, vel = { r: { sx: 0, sz: 0, ex: 0 }, l: { sx: 0, sz: 0, ex: 0 } };
   let action = null, idleTimer = 0, lookX = 0, lookY = 0;
   const blink = makeBlinker();
   const say = speech(bubble);
@@ -1067,40 +652,88 @@ export function createRajiea(container, { bubble, lines = [], badge = 'Dr. Rajie
   const upright = (prop) => { prop.parent.getWorldQuaternion(qa); body.getWorldQuaternion(qb); prop.quaternion.copy(qa.invert().multiply(qb)); };
 
   function play(type) { action = { type, t: 0, dur: DUR[type] }; idleTimer = 0; }
-  function setHijab(hex) {
-    hijabMat.color.set(hex);
-    hijabMat.sheenColor.set(hex).lerp(new THREE.Color(0xffffff), 0.35);
-  }
+  function setHijab(hex) { setCloth(hijabMat, hex); setCloth(ends.fringeMat, hex); }
   function setOutfit(name) {
     outfit = OUTFITS[name] ? name : 'clinic';
     const o = OUTFITS[outfit];
     setHijab(o.hijab);
-    topMat.color.set(o.top);
-    cuffMat.color.set(o.cuff);
-    coat.visible = coatBits.visible = o.coat;
-    top.visible = !o.coat;
-    rib.visible = !!o.rib;
-    top.scale.set(o.rib ? 1.36 : 1.25, 1, o.rib ? 0.9 : 0.8);
-    jeans.visible = o.legs === 'jeans';
-    wide.visible = o.legs === 'wide';
-    shoeMat.color.set(o.shoes);
-    scarf.visible = !!o.scarf;
+    const top = { clinic: mats.coatMat, city: mats.cityMat, cozy: mats.cozyMat }[outfit];
+    setCloth(top, o.top);
+    setCloth(outfit === 'cozy' ? mats.ribMat : mats.cuffMat, o.cuff);
+    for (const k of ['clinic', 'city', 'cozy']) {
+      groups[k].visible = k === outfit;
+      (groups[k].userData.cuffs || []).forEach((c) => (c.visible = k === outfit));
+    }
+    groups.jeans.visible = o.legs === 'jeans';
+    groups.wide.visible = o.legs === 'wide';
+    const shoe = o.shoe || (o.shoes === COL.shoe ? 'loafer' : 'sneaker');
+    for (const k of ['loafer', 'sneaker']) groups[k].userData.parts.forEach((g) => (g.visible = k === shoe));
+    setCloth(shoe === 'loafer' ? mats.loaferMat : mats.sneakMat, o.shoes);
+    ends.group.visible = !!o.scarf;
     bag.visible = !!o.bag;
     idleTimer = 0;
     return o;
   }
   setOutfit('clinic');
 
+  // natural life: breathing, a slow shift of weight, glances and small head moves
+  const life = { sacc: 0, sx: 0, sy: 0, gx: 0, gy: 0 };
+  const hand = { [-1]: { relax: 1, grip: 0, open: 0, hold: 0 }, [1]: { relax: 1, grip: 0, open: 0, hold: 0 } };
+  const qz = new THREE.Quaternion(), qx = new THREE.Quaternion(), ax = new THREE.Vector3(1, 0, 0), az = new THREE.Vector3(0, 0, 1);
+  function poseHand(side, goal, dt) {
+    const w = hand[side];
+    let tot = 0;
+    for (const k in w) { w[k] = damp(w[k], k === goal ? 1 : 0, 10, dt); tot += w[k]; }
+    const mix = (fn) => { let v = 0; for (const k in w) v += (w[k] / tot) * fn(HAND_POSES[k]); return v; };
+    for (const c of rig.hands[side].chains) {
+      const curls = c.kind === 'thumb' ? [0, 1, 2].map((j) => mix((P) => P.t[j])) : [0, 1, 2].map((j) => mix((P) => P.f[c.kind][j]));
+      const s = mix((P) => P.s);
+      if (c.kind === 'thumb') c.bones[0].quaternion.copy(c.rest).multiply(qz.setFromAxisAngle(az, -side * curls[0]));
+      else {
+        const sp = [0.07, 0, -0.06, -0.14][c.kind];
+        c.bones[0].quaternion.setFromAxisAngle(ax, -sp * s).multiply(qz.setFromAxisAngle(az, -side * curls[0]));
+      }
+      c.bones[1].rotation.set(0, 0, -side * curls[1]);
+      c.bones[2].rotation.set(0, 0, -side * curls[2]);
+    }
+  }
+  // two-bone legs keep the feet planted while the hips move
+  const v1 = new THREE.Vector3(), v2 = new THREE.Vector3(), vD = new THREE.Vector3(), qh = new THREE.Quaternion(), qk = new THREE.Quaternion(), q3 = new THREE.Quaternion();
+  function plantLegs() {
+    for (const side of [-1, 1]) {
+      const lg = rig.legs[side];
+      const l1 = v1.set(lg.kn[0] - lg.hp[0], lg.kn[1] - lg.hp[1], lg.kn[2] - lg.hp[2]).length();
+      const l2 = v2.set(lg.an[0] - lg.kn[0], lg.an[1] - lg.kn[1], lg.an[2] - lg.kn[2]).length();
+      hips.updateMatrix();
+      const H = vD.set(...lg.thigh.position.toArray()).applyMatrix4(hips.matrix);
+      const D = H.set(lg.an[0] - H.x, lg.an[1] - H.y, lg.an[2] - H.z);
+      const d = Math.min(D.length(), l1 + l2 - 1e-4);
+      const bend = PI - Math.acos(clamp((l1 * l1 + l2 * l2 - d * d) / (2 * l1 * l2), -1, 1));
+      lg.shin.rotation.set(bend, 0, 0);
+      qk.setFromAxisAngle(ax, bend);
+      const rest = v1.set(lg.kn[0] - lg.hp[0], lg.kn[1] - lg.hp[1], lg.kn[2] - lg.hp[2]).add(v2.applyQuaternion(qk)).normalize();
+      D.normalize().applyQuaternion(qh.copy(hips.quaternion).invert());
+      lg.thigh.quaternion.setFromUnitVectors(rest, D);
+      lg.foot.quaternion.copy(q3.copy(hips.quaternion).multiply(lg.thigh.quaternion).multiply(qk).invert());
+    }
+  }
+
   stage.update = (dt) => {
     const time = stage.time;
     idleTimer += dt;
     const pose = POSES[OUTFITS[outfit].pose];
-    for (const k of ['r', 'l']) for (const j of ['sx', 'sz', 'ex']) cur[k][j] = damp(cur[k][j], pose[k][j], 6, dt);
+    for (const k of ['r', 'l']) for (const j of ['sx', 'sz', 'ex']) {
+      // springy arms: a gentle start and a soft stop
+      const w = 9, a = w * w * (pose[k][j] - cur[k][j]) - 2 * w * vel[k][j];
+      vel[k][j] += a * dt;
+      cur[k][j] += vel[k][j] * dt;
+    }
+    // arms sit a touch away from the coat
     const r = { ...cur.r, ez: 0 }, l = { ...cur.l, ez: 0 };
-    r.sz += Math.sin(time * 1.6) * 0.02;
-    l.sz += Math.sin(time * 1.6 + 1) * 0.02;
-    let hop = 0, squash = 1, extraYaw = 0, sway = Math.sin(time * 0.8) * 0.012, tilt = 0, expr = 'smile', wink = false;
-    let hipX = 0, lean = 0, nod = 0, squint = 1, blushing = 0;
+    r.sz += 0.07 + Math.sin(time * 1.3) * 0.015;
+    l.sz += 0.07 + Math.sin(time * 1.3 + 1) * 0.015;
+    let hop = 0, squash = 1, extraYaw = 0, sway = Math.sin(time * 0.8) * 0.006, tilt = 0, expr = 'smile', wink = false;
+    let hipX = 0, lean = 0, nod = 0, squint = 1, blushing = 0, open = { r: 0, l: 0 };
     const blend = (arm, to, w) => { for (const j in to) arm[j] = lerp(arm[j], to[j], w); };
 
     if (action) {
@@ -1109,52 +742,53 @@ export function createRajiea(container, { bubble, lines = [], badge = 'Dr. Rajie
       switch (action.type) {
         case 'wave': {
           const w = windowed(p, 0.18);
-          blend(r, { sx: -0.1, sz: 2.45, ex: -0.35, ez: Math.sin(a * 12) * 0.45 }, w);
-          tilt = 0.1 * w; expr = 'grin'; break;
+          blend(r, { sx: -0.15, sz: 2.35, ex: -0.45, ez: Math.sin(a * 11) * 0.35 }, w);
+          open.r = w; tilt = 0.08 * w; expr = 'grin'; break;
         }
         case 'jump': {
-          if (p < 0.2) squash = 1 - 0.07 * Math.sin((p / 0.2) * PI * 0.5);
+          if (p < 0.2) squash = 1 - 0.05 * Math.sin((p / 0.2) * PI * 0.5);
           else if (p < 0.78) {
             const q = (p - 0.2) / 0.58, s = Math.sin(q * PI);
-            hop = s * 0.6; squash = 1 + 0.04 * s;
-            blend(r, { sx: 0, sz: 2.6, ex: -0.2 }, s); blend(l, { sx: 0, sz: 2.6, ex: -0.2 }, s);
-          } else squash = 1 - 0.06 * Math.sin(((p - 0.78) / 0.22) * PI);
+            hop = s * 0.55; squash = 1 + 0.03 * s;
+            blend(r, { sx: 0, sz: 2.5, ex: -0.25 }, s); blend(l, { sx: 0, sz: 2.5, ex: -0.25 }, s);
+            open.r = open.l = s;
+          } else squash = 1 - 0.045 * Math.sin(((p - 0.78) / 0.22) * PI);
           expr = 'happy'; break;
         }
         case 'spin': {
-          extraYaw = easeInOut(p) * PI * 2; hop = Math.sin(p * PI) * 0.2;
+          extraYaw = easeInOut(p) * PI * 2; hop = Math.sin(p * PI) * 0.18;
           const w = windowed(p, 0.2);
-          blend(r, { sz: 1.3, ex: -0.1 }, w); blend(l, { sz: 1.3, ex: -0.1 }, w);
-          expr = 'happy'; break;
+          blend(r, { sz: 1.25, ex: -0.15 }, w); blend(l, { sz: 1.25, ex: -0.15 }, w);
+          open.r = open.l = w; expr = 'happy'; break;
         }
         case 'dance': {
           const b = a * 8.5, w = windowed(p, 0.1);
-          sway = Math.sin(b) * 0.07 * w; hop = Math.abs(Math.sin(b)) * 0.08 * w;
-          blend(r, { sx: 0, sz: 2.3 + Math.sin(b) * 0.4, ex: -0.6 }, w); blend(l, { sx: 0, sz: 2.3 - Math.sin(b) * 0.4, ex: -0.6 }, w);
-          tilt = Math.sin(b) * 0.12 * w; expr = Math.sin(a * 2.2) > 0 ? 'happy' : 'grin'; break;
+          sway = Math.sin(b) * 0.06 * w; hop = Math.abs(Math.sin(b)) * 0.07 * w;
+          blend(r, { sx: 0, sz: 2.25 + Math.sin(b) * 0.35, ex: -0.6 }, w); blend(l, { sx: 0, sz: 2.25 - Math.sin(b) * 0.35, ex: -0.6 }, w);
+          open.r = open.l = w; tilt = Math.sin(b) * 0.1 * w; expr = Math.sin(a * 2.2) > 0 ? 'happy' : 'grin'; break;
         }
-        case 'wink': { wink = p > 0.1 && p < 0.75; tilt = 0.12 * windowed(p, 0.25); expr = 'grin'; break; }
+        case 'wink': { wink = p > 0.1 && p < 0.75; tilt = 0.1 * windowed(p, 0.25); expr = 'grin'; break; }
         case 'floss': {
           const b = a * 7, w = windowed(p, 0.1), sw = Math.sin(b);
-          blend(r, { sx: 0.45 * Math.cos(b), sz: 0.1 - 0.55 * sw, ex: -0.05 }, w);
-          blend(l, { sx: -0.45 * Math.cos(b), sz: 0.1 + 0.55 * sw, ex: -0.05 }, w);
-          hipX = -0.07 * sw * w; tilt = 0.05 * sw * w; expr = 'grin'; break;
+          blend(r, { sx: 0.45 * Math.cos(b), sz: 0.12 - 0.45 * sw, ex: -0.08 }, w);
+          blend(l, { sx: -0.45 * Math.cos(b), sz: 0.12 + 0.45 * sw, ex: -0.08 }, w);
+          hipX = -0.06 * sw * w; tilt = 0.05 * sw * w; expr = 'grin'; break;
         }
         case 'candy': {
           const w = windowed(p, 0.15);
-          blend(r, { sx: -0.55, sz: -0.05, ex: -2.35 }, w); blend(l, { sx: -0.55, sz: -0.05, ex: -2.35 }, w);
-          lean = -0.09 * w; tilt = Math.sin(a * 30) * 0.03 * w; expr = 'grin'; break;
+          blend(r, { sx: -0.5, sz: -0.1, ex: -2.2 }, w); blend(l, { sx: -0.5, sz: -0.1, ex: -2.2 }, w);
+          lean = -0.07 * w; tilt = Math.sin(a * 30) * 0.025 * w; expr = 'grin'; break;
         }
         case 'sneeze': {
-          if (p < 0.55) { const q = p / 0.55; nod = -0.28 * q; squint = 1 - 0.75 * q; }
-          else { const q = (p - 0.55) / 0.45; nod = 0.22 * Math.sin(Math.min(1, q * 3) * PI * 0.5) * (1 - q); hop = 0.05 * Math.sin(q * PI); squint = 0.3 + 0.7 * q; }
-          blend(r, { sx: -0.4, sz: -0.05, ex: -2.1 }, windowed(p, 0.2) * 0.8);
+          if (p < 0.55) { const q = p / 0.55; nod = -0.24 * q; squint = 1 - 0.75 * q; }
+          else { const q = (p - 0.55) / 0.45; nod = 0.2 * Math.sin(Math.min(1, q * 3) * PI * 0.5) * (1 - q); hop = 0.04 * Math.sin(q * PI); squint = 0.3 + 0.7 * q; }
+          blend(r, { sx: -0.45, sz: -0.12, ex: -2.0 }, windowed(p, 0.2) * 0.8);
           expr = p > 0.55 ? 'grin' : 'smile'; break;
         }
         case 'dizzy': {
           const w = windowed(p, 0.15);
-          tilt = Math.sin(a * 6) * 0.16 * w; nod = Math.cos(a * 6) * 0.1 * w; sway = Math.sin(a * 3) * 0.05 * w;
-          blend(r, { sz: 0.6, ex: -0.3 }, w); blend(l, { sz: 0.6, ex: -0.3 }, w); expr = 'happy'; break;
+          tilt = Math.sin(a * 6) * 0.14 * w; nod = Math.cos(a * 6) * 0.08 * w; sway = Math.sin(a * 3) * 0.04 * w;
+          blend(r, { sz: 0.6, ex: -0.3 }, w); blend(l, { sz: 0.6, ex: -0.3 }, w); open.r = open.l = w * 0.6; expr = 'happy'; break;
         }
         case 'selfie': {
           const w = windowed(p, 0.2);
@@ -1166,8 +800,8 @@ export function createRajiea(container, { bubble, lines = [], badge = 'Dr. Rajie
         case 'matcha': {
           const w = windowed(p, 0.18);
           const sip = smooth(0.3, 0.48, p) * (1 - smooth(0.72, 0.86, p));
-          blend(l, { sx: lerp(-0.3, -0.85, sip), sz: lerp(0.1, 0.3, sip), ex: lerp(-1.4, -2.15, sip) }, w);
-          nod = 0.08 * sip; expr = sip > 0.5 ? 'happy' : 'smile'; break;
+          blend(l, { sx: lerp(-0.3, -1.28, sip), sz: lerp(0.1, 0.2, sip), ex: lerp(-1.4, -2.55, sip), ez: lerp(0, -0.28, sip) }, w);
+          nod = 0.08 * sip; squint = 1 - 0.85 * sip; expr = 'smile'; break;
         }
         case 'blush': {
           const w = windowed(p, 0.2);
@@ -1185,35 +819,62 @@ export function createRajiea(container, { bubble, lines = [], badge = 'Dr. Rajie
       if (P.l) blend(l, P.l, w);
       if (P.expr && !action) expr = P.expr;
       tilt += (P.tilt || 0) * w; lean += (P.lean || 0) * w; extraYaw += (P.yaw || 0) * w;
+      if (P.r && P.r.sz > 1.5) open.r = Math.max(open.r, w);
+      if (P.l && P.l.sz > 1.5) open.l = Math.max(open.l, w);
     }
     if (face.expression !== expr) face.setExpression(expr);
     if (!reduceMotion() && !action && !api.calm && idleTimer > 11) play(Math.random() < 0.5 ? 'wave' : 'wink');
 
-    // the right arm mirrors its sideways angle
+    // arms (her right arm mirrors its sideways angle); palms turn forward when the arm is up
+    const twist = (s, sz) => s * 1.35 * smooth(1.3, 2.2, sz);
     armR.shoulder.rotation.set(r.sx, 0, -r.sz);
-    armR.elbow.rotation.set(r.ex, 0, -r.ez);
+    armR.elbow.rotation.set(r.ex, twist(-1, r.sz), -r.ez);
     armL.shoulder.rotation.set(l.sx, 0, l.sz);
-    armL.elbow.rotation.set(l.ex, 0, l.ez);
+    armL.elbow.rotation.set(l.ex, twist(1, l.sz), l.ez);
+    armR.hand.rotation.set(0.04, 0, 0.12);
+    armL.hand.rotation.set(0.04, 0, -0.12);
+
+    // whole body moves, then breathing and weight shift inside it
+    const still = reduceMotion() ? 0 : 1;
     body.position.set(hipX, hop, 0);
     body.scale.set(1 / Math.sqrt(squash), squash, 1 / Math.sqrt(squash));
     body.rotation.set(lean, 0, sway);
-    scarf.children.forEach((t, i) => (t.rotation.x = -0.08 - Math.sin(time * 1.8 + i) * 0.03 - hop * 0.3));
+    const br = Math.sin(time * 1.45) * still;
+    breath.scale.set(1 + 0.012 * br, 1 + 0.006 * br, 1 + 0.022 * br);
+    chest.position.y = L.chest[1] - L.spine[1] + 0.003 * br;
+    const shift = Math.sin(time * 0.42) * still * (action ? 0.3 : 1);
+    hips.position.set(0.018 * shift, L.hips[1] - 0.006 * Math.abs(shift), 0);
+    hips.rotation.set(0, 0.02 * shift, 0.03 * shift);
+    spine.rotation.set(0.01 * br, -0.015 * shift, -0.04 * shift);
+    plantLegs();
+
     char.rotation.y = (fixed ? 0 : stage.stepTurn(dt)) + extraYaw;
-    lookX = damp(lookX, P?.lookX ?? stage.pointer.x, 5, dt);
-    lookY = damp(lookY, P?.lookY ?? stage.pointer.y, 5, dt);
-    head.rotation.set(-lookY * 0.14 + nod, lookX * 0.45, tilt + sway * 0.5 - lookX * 0.04);
+    // eyes glance around now and then; the head follows a little slower
+    life.sacc -= dt;
+    if (life.sacc <= 0) { life.sacc = 0.6 + Math.random() * 2.2; life.sx = (Math.random() - 0.5) * 0.22; life.sy = (Math.random() - 0.5) * 0.12; }
+    life.gx = damp(life.gx, life.sx * still, 30, dt);
+    life.gy = damp(life.gy, life.sy * still, 30, dt);
+    lookX = damp(lookX, P?.lookX ?? stage.pointer.x, 4, dt);
+    lookY = damp(lookY, P?.lookY ?? stage.pointer.y, 4, dt);
+    const hx = Math.sin(time * 0.53) * 0.02 * still, hy = Math.sin(time * 0.37 + 1) * 0.015 * still;
+    const pitch = -lookY * 0.14 + nod + hy, yaw = lookX * 0.45 + hx, roll = tilt + sway * 0.5 - lookX * 0.04 + Math.sin(time * 0.29) * 0.01 * still;
+    neck.rotation.set(pitch * 0.35, yaw * 0.35, roll * 0.35);
+    head.rotation.set(pitch * 0.65, yaw * 0.65, roll * 0.65);
+
     const propNow = action?.type === 'selfie' ? 'phone' : action?.type === 'matcha' ? 'cup' : P && 'prop' in P ? P.prop : OUTFITS[outfit].prop;
     brush.visible = propNow === 'brush';
     cup.visible = propNow === 'cup';
     phone.visible = propNow === 'phone';
     brew.material.color.setHex(action?.type === 'matcha' ? 0x9cc46a : 0xb07f5c);
+    poseHand(1, open.l > 0.5 ? 'open' : propNow === 'brush' ? 'grip' : propNow === 'cup' ? 'hold' : action?.type === 'candy' ? 'grip' : 'relax', dt);
+    poseHand(-1, open.r > 0.5 ? 'open' : propNow === 'phone' ? 'hold' : action?.type === 'candy' || action?.type === 'sneeze' ? 'grip' : 'relax', dt);
     char.updateMatrixWorld(true);
-    upright(brush); upright(cup); upright(phone);
-    const open = blink(dt) * squint;
-    face.update(dt, { open: [open, wink ? 0 : open], lookX, lookY, blush: blushing });
+    upright(brush); upright(cupHold); upright(phone);
+    const o = blink(dt) * squint;
+    face.update(dt, { open: [o, wink ? 0 : o], lookX: lookX + life.gx, lookY: lookY + life.gy, blush: blushing });
     floats.update(time, dt, lookX);
   };
-  const headTop = new THREE.Vector3(0, 0.62, 0);
+  const headTop = new THREE.Vector3(0, 0.32, 0);
   stage.afterRender = () => stage.bubbleAt(bubble, head, headTop);
 
   let close = false;
@@ -1225,18 +886,16 @@ export function createRajiea(container, { bubble, lines = [], badge = 'Dr. Rajie
   };
   stage.onSpin = () => api.onSpin?.();
   stage.onHold = (raycaster) => {
-    if (raycaster.intersectObject(char, true).length) api.onHold?.();
+    if (raycaster.intersectObject(hit).length) api.onHold?.();
   };
+  api.stage = stage;
+  api.char = char;
   // let a caller add more to this stage
-  if (extend) {
-    api.stage = stage;
-    api.char = char;
-    extend({ THREE, stage, scene, char, body, head, add, lathe, std, COL, buildFace, makeBlinker, placeOnFace, makeHeart, damp, lerp, clamp, reduceMotion, api });
-  }
+  if (extend) extend({ THREE, stage, scene, char, body, head, add, lathe, std, COL, buildFace, makeBlinker, placeOnFace, makeHeart, damp, lerp, clamp, reduceMotion, api });
   stage.onTap = (raycaster) => {
     const kind = floats.hit(raycaster);
     if (kind) { api.onPop?.(kind); return; }
-    if (raycaster.intersectObject(char, true).length) {
+    if (raycaster.intersectObject(hit).length) {
       play(['jump', 'spin', 'dance', 'wave', 'wink', 'floss'][Math.floor(Math.random() * 6)]);
       say(randomLine());
       api.onPoke?.();
@@ -1247,75 +906,29 @@ export function createRajiea(container, { bubble, lines = [], badge = 'Dr. Rajie
 }
 
 // ════════════════════════════════════════════════════════════
-//  Little Rajiea — from the baby photo
+//  Little Rajiea
 // ════════════════════════════════════════════════════════════
 export function createLittleRajiea(container, { bubble, lines = [], view } = {}) {
-  const stage = createStage(container, { dist: 8.2, camY: 1.55, lookY: 1.2, podium: 0.85, shadowTop: 3.2, ...view });
+  const stage = createStage(container, { dist: 6.7, camY: 1.62, lookY: 1.22, podium: 0.85, shadowTop: 3.2, ...view });
   const { scene } = stage;
   stage.canvas.setAttribute('aria-label', '3D Little Rajiea. Tap her to make her giggle.');
 
   const char = new THREE.Group();
   const body = new THREE.Group();
   char.add(body);
+  char.add(contactShadow(0.9, 0.7, 0.5));
   scene.add(char);
-
-  const skin = std(COL.skin, { roughness: 0.62 });
-  const navy = std(0x34264a, { roughness: 0.7 });
-  const white = std(0xfbf7f2, { roughness: 0.75 });
-  const hairMat = std(COL.hair, { roughness: 0.75 });
-
-  // Legs and bare feet
-  for (const x of [-0.15, 0.15]) {
-    add(body, new THREE.CapsuleGeometry(0.105, 0.16, 6, 12), skin, [x, 0.24, 0]);
-    add(body, new THREE.SphereGeometry(0.11, 20, 12), skin, [x, 0.07, 0.05], [0, 0, 0], [1, 0.6, 1.35]);
-  }
-  // Dress: navy bodice with white trim, white skirt with a navy band
-  add(body, lathe([[0, 0.34], [0.5, 0.34], [0.54, 0.4], [0.5, 0.56], [0.44, 0.7], [0.42, 0.72]]), white);
-  add(body, new THREE.TorusGeometry(0.5, 0.035, 10, 72), navy, [0, 0.5, 0], [PI / 2, 0, 0]);
-  add(body, lathe([[0.43, 0.68], [0.42, 0.82], [0.38, 1.0], [0.3, 1.12], [0.14, 1.18], [0, 1.19]]), navy);
-  add(body, new THREE.TorusGeometry(0.16, 0.025, 8, 40), white, [0, 1.165, 0.02], [PI / 2 - 0.1, 0, 0]);
-
-  // Arms (sleeveless) with a gold bangle and the toy
-  function makeArm(side) {
-    const pivot = new THREE.Group();
-    pivot.position.set(0.34 * side, 1.02, 0);
-    add(pivot, new THREE.TorusGeometry(0.1, 0.022, 8, 24), white, [0, -0.02, 0], [PI / 2, 0, 0.3 * side]);
-    add(pivot, new THREE.CapsuleGeometry(0.085, 0.26, 6, 12), skin, [0, -0.2, 0]);
-    add(pivot, new THREE.SphereGeometry(0.09, 20, 12), skin, [0, -0.4, 0]);
-    const hand = new THREE.Group();
-    hand.position.set(0, -0.4, 0);
-    pivot.add(hand);
-    body.add(pivot);
-    return { pivot, hand };
-  }
-  const armR = makeArm(-1);
-  const armL = makeArm(1);
-  add(armL.pivot, new THREE.TorusGeometry(0.085, 0.018, 8, 24), goldMat(), [0, -0.32, 0], [PI / 2, 0, 0]);
+  const kid = buildChild(body);
+  const [armR, armL] = kid.arms;
+  const { head, face } = kid;
   const toy = makeToy();
+  toy.scale.setScalar(0.7);
+  toy.position.set(-0.014, -0.07, 0.012);
   toy.rotation.order = 'ZYX';
   armL.hand.add(toy);
 
-  // Head with a short brown bob and bangs
-  const head = new THREE.Group();
-  head.position.set(0, 1.12, 0);
-  body.add(head);
-  const FACE = { c: new THREE.Vector3(0, 0.6, 0.36), a: 0.64, b: 0.68, d: 0.52 };
-  add(head, new THREE.SphereGeometry(0.8, 48, 32), hairMat, [0, 0.7, -0.05], [0, 0, 0], [1.04, 0.98, 1]);
-  add(head, new THREE.SphereGeometry(1, 48, 32), skin, FACE.c.toArray(), [0, 0, 0], [FACE.a, FACE.b, FACE.d]);
-  for (const side of [-1, 1]) {
-    add(head, new THREE.SphereGeometry(0.3, 24, 16), hairMat, [0.58 * side, 0.38, 0.0], [0, 0, 0], [0.7, 1.05, 1]);
-    add(head, new THREE.SphereGeometry(0.09, 16, 10), skin, [0.66 * side, 0.52, 0.12], [0, 0, 0], [0.6, 1, 0.8]);
-  }
-  for (const [u, v, s] of [[-0.36, 0.5, 1], [-0.18, 0.56, 1.1], [0.0, 0.58, 1.05], [0.18, 0.56, 1.1], [0.36, 0.5, 1]]) {
-    const bang = placeOnFace(FACE, new THREE.Group(), u, v, -0.02);
-    add(bang, new THREE.SphereGeometry(0.13 * s, 20, 12), hairMat, [0, 0, 0], [0, 0, 0], [1.2, 0.85, 0.55]);
-    head.add(bang);
-  }
-  const face = buildFace(head, FACE, { eyeX: 0.22, size: 0.95, lash: false });
-  face.setExpression('grin');
-
   const floats = floaterSet(scene, [
-    ['heart', -1.6, 2.2, -0.4, 0.8], ['heart', 1.7, 1.0, 0.1, 0.7], ['spark', 1.4, 2.6, -0.6], ['spark', -1.8, 0.7, 0.2], ['spark', -0.9, 2.9, -0.8],
+    ['heart', -1.5, 2.2, -0.4, 0.75], ['heart', 1.5, 1.1, 0.1, 0.65], ['spark', 1.3, 2.5, -0.6], ['spark', -1.6, 0.8, 0.2], ['spark', -0.9, 2.8, -0.8],
   ]);
 
   let giggle = 0;
@@ -1329,25 +942,21 @@ export function createLittleRajiea(container, { bubble, lines = [], view } = {})
     giggle = Math.max(0, giggle - dt);
     const g = giggle > 0 ? Math.sin((1 - giggle / 1.4) * PI) : 0;
     const toddle = reduceMotion() ? 0 : Math.sin(t * 3.2);
-    body.rotation.z = toddle * 0.06 + Math.sin(t * 18) * 0.03 * g;
-    body.position.y = Math.abs(toddle) * 0.04 + Math.abs(Math.sin(t * 9)) * 0.25 * g;
-    armR.pivot.rotation.set(-0.15 - g * 0.3, 0, -0.35 - Math.sin(t * 3.2) * 0.12 - g * 1.6);
-    armL.pivot.rotation.set(-0.7, 0, 0.3 + Math.sin(t * 3.2 + 1) * 0.08);
-    toy.rotation.set(0.7, 0, -0.3 - Math.sin(t * 3.2 + 1) * 0.08 + Math.sin(t * 6) * 0.1);
-    face.setExpression(g > 0.1 ? 'happy' : 'grin');
+    kid.upper.rotation.z = toddle * 0.045 + Math.sin(t * 18) * 0.03 * g;
+    body.position.y = Math.abs(Math.sin(t * 9)) * 0.2 * g;
+    armR.pivot.rotation.set(-0.12 - g * 0.3, 0, -0.2 - Math.sin(t * 3.2) * 0.06 - g * 1.9);
+    armL.pivot.rotation.set(-0.8, 0, 0.18 + Math.sin(t * 3.2 + 1) * 0.04);
+    toy.rotation.set(0.75, 0, -0.2 - Math.sin(t * 3.2 + 1) * 0.06 + Math.sin(t * 6) * 0.1);
+    face.setExpression(g > 0.1 ? 'happy' : 'smile');
     char.rotation.y = stage.stepTurn(dt);
     lookX = damp(lookX, stage.pointer.x, 5, dt);
     lookY = damp(lookY, stage.pointer.y, 5, dt);
-    head.rotation.set(-lookY * 0.14, lookX * 0.4, toddle * 0.08 - lookX * 0.05);
-    const open = blink(dt);
-    face.eyes.forEach((e) => {
-      e.lid.scale.y = open;
-      e.look.position.set(lookX * 0.016, lookY * 0.01, 0);
-    });
+    head.rotation.set(-lookY * 0.14, lookX * 0.4, toddle * 0.06 - lookX * 0.05);
+    const o = blink(dt);
+    face.update(dt, { open: [o, o], lookX, lookY });
     floats.update(t, dt, lookX);
   };
-  const headTop = new THREE.Vector3(0, 1.6, 0);
-  stage.afterRender = () => stage.bubbleAt(bubble, head, headTop);
+  stage.afterRender = () => stage.bubbleAt(bubble, head, kid.top);
 
   const api = {
     giggle() { giggle = 1.4; say(randomLine()); api.onGiggle?.(); },

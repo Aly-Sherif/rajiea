@@ -35,6 +35,13 @@ export const EGGS = [
   E('streak', 'Good habit', '3ada 7elwa', 'Brush three days in a row.', 'E8sel snanak 3 ayam wara ba3d.'),
   E('reader', 'Re-reader', 'Bey2ra tany w talet', 'Some letters are worth opening again… and again.', 'Feeh gawabat testahel tetfete7 tany… w talet.'),
   E('pen', 'Pen pal', 'Sa7eb el gawabat', 'Leave her a note.', 'Sebelha resala.'),
+  E('day', 'Full day', 'Yom kamel', 'Follow her day all the way to good night.', 'Taba3y yomha le7ad tesba7y 3ala kheir.'),
+  E('barista', 'Barista', 'Barista', 'Make a perfect five-leaf matcha.', 'E3mely matcha mazboota b khamas wara2at.'),
+  E('sparkle', 'Sparkle', 'Bteles3', 'Make the Smile studio smile sparkle.', 'Khally ebtesamet el Smile studio tles3.'),
+  E('penalty', 'Five from five', 'Khamsa men khamsa', 'Score every penalty in the shootout.', 'Dakhaly kol darbet targee7.'),
+  E('fortune', 'Fortune teller', 'Bta3et el 7azz', 'Crack five fortune cookies.', 'Ekssary khamas fortune cookies.'),
+  E('hope', 'Full of hope', 'Malyana amal', 'Drop a hope of your own in the jar.', 'Ermy amal men 3andek fel bartaman.'),
+  E('hearts', 'Heart storm', '3asefet 2loob', 'Double-tap the page… a lot.', 'Dosy dablet-tap 3al sa7fa… keteer.'),
 ].filter((e) => e.id !== 'pen' || CONFIG.notes);
 
 const KEY = 'rajiea-eggs';

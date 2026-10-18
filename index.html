@@ -29,8 +29,11 @@
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Aref+Ruqaa:wght@400;700&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,600&family=Manrope:wght@400;500;600;700;800&family=Tajawal:wght@500;700;800&display=swap">
+  <!-- fonts load in the background so the code screen never waits for them -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Aref+Ruqaa:wght@400;700&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,600&family=Manrope:wght@400;500;600;700;800&family=Tajawal:wght@500;700;800&display=swap" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Aref+Ruqaa:wght@400;700&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,600&family=Manrope:wght@400;500;600;700;800&family=Tajawal:wght@500;700;800&display=swap"></noscript>
   <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/more.css">
   <link rel="modulepreload" href="js/boot.js">
   <link rel="modulepreload" href="js/main.js">
   <link rel="modulepreload" href="js/character.js">
@@ -98,11 +101,11 @@
     </a>
     <nav class="nav-links" aria-label="Sections">
       <a href="#meet" data-ar="3anha">About</a>
-      <a href="#favs-sec" data-ar="El mofaddal">Favourites</a>
-      <a href="#tips" data-ar="Nasayeh">Tips</a>
+      <a href="#day" data-ar="Yomha">Her day</a>
       <a href="#games" data-ar="Al3ab">Games</a>
-      <a href="#brush" data-ar="Forsha">Brush</a>
+      <a href="#selfie" data-ar="Studio">Studio</a>
       <a href="#notes" data-ar="Rasayel">Notes</a>
+      <button type="button" class="nav-more" data-explore aria-haspopup="dialog"><span aria-hidden="true">✨</span> <span data-ar="Aktar">More</span></button>
     </nav>
     <div class="nav-tools">
       <button class="lang" id="langBtn" type="button" data-lang data-lang-label aria-label="Language" data-ar-label="El lo8a">3arabi</button>
@@ -111,11 +114,11 @@
   </header>
 
   <nav class="dock" aria-label="Sections">
-    <a href="#top"><span>🏠</span><b data-ar="El bedaya">Home</b></a>
-    <a href="#meet"><span>🧕</span><b data-ar="3anha">About</b></a>
-    <a href="#games"><span>🎮</span><b data-ar="Al3ab">Games</b></a>
-    <a href="#brush"><span>🪥</span><b data-ar="Forsha">Brush</b></a>
-    <a href="#notes"><span>💌</span><b data-ar="Rasayel">Notes</b></a>
+    <a href="#top" data-group="home"><span>🏠</span><b data-ar="El beit">Home</b></a>
+    <a href="#day" data-group="day"><span>☀️</span><b data-ar="Yomha">Her day</b></a>
+    <a href="#games" data-group="play"><span>🎮</span><b data-ar="Al3ab">Play</b></a>
+    <a href="#notes" data-group="notes"><span>💌</span><b data-ar="Rasayel">Notes</b></a>
+    <button type="button" class="dock-more" data-explore data-group="more" aria-haspopup="dialog"><span>✨</span><b data-ar="Aktar">More</b></button>
   </nav>
 
   <main>
@@ -127,6 +130,7 @@
         <div class="hero-copy">
           <span class="pill"><i class="pulse"></i><span data-ar="Ahlan beek f 3alamha el so8ayar">Welcome to her little world</span></span>
           <span class="wx-chip" id="wxChip" hidden></span>
+          <button type="button" class="motion-chip" id="motionChip" hidden><span aria-hidden="true">✨</span> <span data-ar="Sha88aly el tilt w el hazz">Turn on tilt &amp; shake</span></button>
           <h1 class="title" aria-label="Rajiea, راجية">
             <span class="title-en" id="titleEn" aria-hidden="true" dir="ltr">Rajiea</span>
             <span class="title-ar" lang="ar" dir="rtl" aria-hidden="true">راجية</span>
@@ -262,6 +266,19 @@
         <p data-reveal data-ar="Dos 3ala ay card — kollohom bey3melo 7aga.">Tap a tile — every one of them does something.</p>
       </header>
       <div class="favs" id="favs"></div>
+      <div class="favs-dots" id="favsDots" aria-hidden="true"></div>
+    </section>
+
+    <!-- ───────── A day with her ───────── -->
+    <section class="day-sec" id="day" aria-labelledby="dayTitle">
+      <header class="sec-head">
+        <span class="kicker" lang="ar" data-reveal>يوم مع راجية</span>
+        <h2 id="dayTitle" data-split data-ar="Yom ma3a Dr. Rajiea">A day with Dr. Rajiea</h2>
+        <p data-reveal data-ar="Yom men 7agat-ha el mofaddala. Enzely ma3ah — w dosy 3ala ay 7aga tshofeeha.">An imagined day, made of her favourite things. Scroll through it — and tap whatever you see.</p>
+      </header>
+      <div class="day" id="dayTrack">
+        <div class="day-stage" id="dayStage"></div>
+      </div>
     </section>
 
     <!-- ───────── Then & now ───────── -->
@@ -286,8 +303,18 @@
       </div>
     </section>
 
+    <!-- ───────── Matcha bar ───────── -->
+    <section class="section tinted mb-sec" id="matcha">
+      <header class="sec-head">
+        <span class="kicker" lang="ar" data-reveal>بار الماتشا</span>
+        <h2 data-split data-ar="El Matcha bar">The Matcha bar</h2>
+        <p data-reveal data-ar="Ekhtary el no3, ekhfo2y, sobby el laban — w e7fazy card el mashroob.">Pick a base, whisk it, pour the milk — then keep the drink card.</p>
+      </header>
+      <div class="mb" id="mb" data-reveal></div>
+    </section>
+
     <!-- ───────── Myth or fact ───────── -->
-    <section class="section tinted" id="tips">
+    <section class="section" id="tips">
       <header class="sec-head">
         <span class="kicker" lang="ar" data-reveal>مدرسة الابتسامة</span>
         <h2 data-split data-ar="Madraset el ebtesama">Smile School</h2>
@@ -295,6 +322,16 @@
       </header>
       <div class="mf-score" data-reveal><span data-ar="Nateegtak">Your score</span> <b id="mfScore">0</b> / <span id="mfTotal">8</span></div>
       <div class="mf-grid" id="mfGrid"></div>
+    </section>
+
+    <!-- ───────── Smile studio ───────── -->
+    <section class="section tinted" id="smile">
+      <header class="sec-head">
+        <span class="kicker" lang="ar" data-reveal>استوديو الابتسامة</span>
+        <h2 data-split data-ar="Smile studio">Smile studio</h2>
+        <p data-reveal data-ar="Ekshoty el plaque, estakhdemy el khet, w lamma3y — le7ad ma el ebtesama tles3. B soba3ek.">Scrub, floss and polish this smile until it sparkles. Your finger is the toothbrush.</p>
+      </header>
+      <div class="ss" id="ss" data-reveal data-no-hearts></div>
     </section>
 
     <!-- ───────── Games ───────── -->
@@ -325,6 +362,16 @@
           </div>
         </div>
       </div>
+    </section>
+
+    <!-- ───────── Penalty shootout ───────── -->
+    <section class="pk-sec" id="barca">
+      <header class="sec-head">
+        <span class="kicker" lang="ar" data-reveal>ضربات الترجيح</span>
+        <h2 data-split data-ar="Darabat targee7 Barcelona">Barça penalty shootout</h2>
+        <p data-reveal data-ar="Es7aby le foo2 men el kora. Asra3 = a3la, w law es7abty bel 3eweg el kora btelef. Khamas darabat.">Swipe up from the ball to shoot. Faster goes higher, a curved swipe bends it. Five kicks.</p>
+      </header>
+      <div class="pk" id="pk" data-reveal data-no-hearts></div>
     </section>
 
     <!-- ───────── Brush along ───────── -->
@@ -364,6 +411,36 @@
           </div>
         </div>
       </div>
+    </section>
+
+    <!-- ───────── Selfie studio ───────── -->
+    <section class="section" id="selfie">
+      <header class="sec-head">
+        <span class="kicker" lang="ar" data-reveal>استوديو السيلفي</span>
+        <h2 data-split data-ar="Selfie studio">Selfie studio</h2>
+        <p data-reveal data-ar="El camera el amameya, frames pink w stickers. Kol 7aga bteb2a 3ala mobilek — mafeesh 7aga btet-rafa3.">Front camera, hot-pink frames and stickers. Everything stays on your phone — nothing is uploaded.</p>
+      </header>
+      <div class="sf" id="sf" data-reveal data-no-hearts></div>
+    </section>
+
+    <!-- ───────── Fortune cookie ───────── -->
+    <section class="section tinted" id="cookie">
+      <header class="sec-head">
+        <span class="kicker" lang="ar" data-reveal>كوكي الحظ</span>
+        <h2 data-split data-ar="Fortune cookie">Fortune cookie</h2>
+        <p data-reveal data-ar="Dosy 3aleeha talat marrat — aw hezzy el mobile — 3ashan tetkesser.">Tap it three times — or shake your phone — to crack it open.</p>
+      </header>
+      <div class="fc" id="fc" data-reveal data-no-hearts></div>
+    </section>
+
+    <!-- ───────── Hope jar ───────── -->
+    <section class="hj-sec" id="hope">
+      <header class="sec-head">
+        <span class="kicker" lang="ar" data-reveal>برطمان الأمل</span>
+        <h2 data-split data-ar="Bartaman el amal">The hope jar</h2>
+        <p data-reveal data-ar="Rajiea ya3ny malyana amal. Ekteby amal, etneeh negma w ermeeh fel bartaman. Dosy 3al bartaman 3ashan tetala3y wa7da.">Rajiea means “full of hope”. Write one down, fold it into a star and drop it in. Tap the jar to pull one out.</p>
+      </header>
+      <div class="hj" id="hj" data-reveal data-no-hearts></div>
     </section>
 
     <!-- ───────── Notes for Rajiea ───────── -->

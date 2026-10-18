@@ -5,11 +5,14 @@ import { egg } from './eggs.js';
 import { openPad } from './vault.js';
 import { t, isAr, switchLang } from './i18n.js';
 import { initNotes } from './notes.js';
+import { buzz, motion, sheet, toast, longPress, doubleTapHearts, whenNear, onVisible, coarse } from './touch.js';
+import { initTips } from './sections/tips.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const fine = matchMedia('(pointer: fine)').matches;
 const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 const esc = (x) => String(x).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 // ── Title letters & rotating tagline ──
@@ -333,71 +336,90 @@ const FAV_FX = {
   pink: { emoji: ['💗', '💖', '🩷'], say: t('Hot pink is a personality 💗', 'El hot pink shakhseya 💗'), move: 'spin' },
   snap: { emoji: ['📸', '✨'], say: t('Say cheese 📸', 'Ool cheese 📸'), move: 'selfie' },
 };
-$('#favs').innerHTML = CONFIG.favourites.map((f, i) => `
+const favsEl = $('#favs');
+favsEl.innerHTML = CONFIG.favourites.map((f, i) => `
   <button type="button" class="fav fav-${f.id}" data-fav="${f.id}" data-reveal style="--d:${i % 3}">
     <span class="fav-icon" aria-hidden="true">${f.icon}</span>
     <span class="fav-art" aria-hidden="true"></span>
     <b>${esc(f.title)}</b>
     <small>${esc(f.text)}</small>
+    <span class="fav-hold" aria-hidden="true">${t('hold to peek', 'dosy w emseky')}</span>
   </button>`).join('');
-$$('[data-reveal]', $('#favs')).forEach((el) => reveal.observe(el));
-$$('.fav').forEach((b) => b.addEventListener('click', () => {
+$$('[data-reveal]', favsEl).forEach((el) => reveal.observe(el));
+const favPop = (b) => {
   const fx = FAV_FX[b.dataset.fav] || {};
   b.classList.remove('boom');
   void b.offsetWidth;
   b.classList.add('boom');
   sfx.pop();
+  buzz(10);
   confettiFrom(b, { count: 26, spread: 0.6, emoji: fx.emoji, colors: fx.colors });
   if (rajiea && fx.move) { rajiea.play(fx.move); rajiea.say(fx.say, 2600); }
+};
+$$('.fav').forEach((b) => b.addEventListener('click', () => favPop(b)));
+
+// hold a tile: a sheet with a little more, and a way into the part of the site it belongs to
+const FAV_GO = {
+  tamer: { label: t('Make her dance 🎶', 'Khalleeha tor2os 🎶'), run: () => { goTo('top'); setTimeout(() => { rajiea?.play('dance'); rajiea?.say(t('Nagm El Geel 🎤', 'Nagm el Geel 🎤'), 3000); }, 700); } },
+  barca: { label: t('Take a penalty ⚽', 'Ekhdy darbet gaza2 ⚽'), run: () => goTo('barca') },
+  matcha: { label: t('Make her a matcha 🍵', 'E3mely-laha matcha 🍵'), run: () => goTo('matcha') },
+  capp: { label: t('Café o’clock in her day ☕', 'Wa2t el café f yomha ☕'), run: () => goDay('cafe') },
+  tira: { label: t('Crack a fortune cookie 🥠', 'Ekssary fortune cookie 🥠'), run: () => goTo('cookie') },
+  roz: { label: t('Crack a fortune cookie 🥠', 'Ekssary fortune cookie 🥠'), run: () => goTo('cookie') },
+  tawouk: { label: t('Lunch in her day 🥙', 'El 8ada f yomha 🥙'), run: () => goDay('tawouk') },
+  pink: { label: t('Try the pink selfie frame 💗', 'Garraby frame el selfie el pink 💗'), run: () => { document.documentElement.dataset.sfFrame = 'pink'; goTo('selfie'); } },
+  snap: { label: t('Open the Selfie studio 📸', 'Efta7y el Selfie studio 📸'), run: () => goTo('selfie') },
+};
+$$('.fav').forEach((b) => longPress(b, () => {
+  const f = CONFIG.favourites.find((x) => x.id === b.dataset.fav);
+  if (!f) return;
+  const go = FAV_GO[f.id];
+  const s = sheet({
+    title: `<span class="peek-icon" aria-hidden="true">${f.icon}</span> ${esc(f.title)}`,
+    className: `peek peek-${f.id}`,
+    body: `<p class="peek-text">${esc(f.more || f.text)}</p>
+      <div class="peek-btns">
+        ${go ? `<button type="button" class="btn btn-pink" data-go>${go.label}</button>` : ''}
+        <button type="button" class="btn btn-glass" data-pop>${t('Surprise me ✨', 'Fag2eeny ✨')}</button>
+      </div>`,
+  });
+  sfx.pop();
+  $('[data-go]', s.el)?.addEventListener('click', () => { s.close(); setTimeout(() => go.run(), 250); });
+  $('[data-pop]', s.el).addEventListener('click', () => { s.close(); setTimeout(() => favPop(b), 300); });
 }));
+// on phones the tiles are a swipeable row: dots + the centred tile grows
+{
+  const dots = $('#favsDots');
+  dots.innerHTML = CONFIG.favourites.map(() => '<i></i>').join('');
+  const dotEls = $$('i', dots);
+  const favEls = $$('.fav', favsEl);
+  let queued = false, lastI = -1;
+  const paint = () => {
+    queued = false;
+    if (favsEl.scrollWidth <= favsEl.clientWidth + 4) return;
+    const mid = favsEl.scrollLeft + favsEl.clientWidth / 2;
+    let best = 0, bestD = Infinity;
+    favEls.forEach((el, i) => {
+      const c = el.offsetLeft + el.offsetWidth / 2;
+      const d = Math.abs(c - mid);
+      if (d < bestD) { bestD = d; best = i; }
+      el.style.setProperty('--near', Math.max(0, 1 - d / el.offsetWidth).toFixed(3));
+    });
+    if (best !== lastI) {
+      if (lastI >= 0) buzz(4);
+      lastI = best;
+      dotEls.forEach((d, i) => d.classList.toggle('on', i === best));
+    }
+  };
+  favsEl.addEventListener('scroll', () => { if (!queued) { queued = true; requestAnimationFrame(paint); } }, { passive: true });
+  addEventListener('resize', paint);
+  requestAnimationFrame(paint);
+  // once the row is on screen every tile is shown (sideways tiles never cross the screen edge)
+  whenNear(favsEl, () => favEls.forEach((el) => el.classList.add('in')), '0px 0px -60px 0px');
+}
 
 // ── Smile School: myth or fact ──
-const mfGrid = $('#mfGrid');
-const tips = CONFIG.tips;
-$('#mfTotal').textContent = tips.length;
-mfGrid.innerHTML = tips.map((tp, i) => `
-  <div class="mf-card" data-reveal style="--d:${i % 4}" data-i="${i}">
-    <div class="mf-inner">
-      <div class="mf-face mf-front">
-        <span class="mf-num">#${i + 1}</span>
-        <p class="mf-claim">${esc(tp.claim)}</p>
-        <div class="mf-btns">
-          <button type="button" data-guess="myth">${t('Myth', 'Khorafa')}</button>
-          <button type="button" data-guess="fact">${t('Fact', '7a2ee2a')}</button>
-        </div>
-      </div>
-      <div class="mf-face mf-back ${tp.fact ? 'is-fact' : 'is-myth'}">
-        <span class="mf-verdict">${tp.fact ? t('Fact ✓', '7a2ee2a ✓') : t('Myth ✗', 'Khorafa ✗')}</span>
-        <p class="mf-result"></p>
-        <p class="mf-why">${esc(tp.why)}</p>
-        <button type="button" class="mf-flip">${t('Flip back', 'E2leb tany')}</button>
-      </div>
-    </div>
-  </div>`).join('');
-$$('[data-reveal]', mfGrid).forEach((el) => reveal.observe(el));
-let mfScore = 0, mfDone = 0;
-$$('.mf-card', mfGrid).forEach((card) => {
-  const tp = tips[+card.dataset.i];
-  $$('[data-guess]', card).forEach((b) => b.addEventListener('click', () => {
-    if (card.classList.contains('answered')) { card.classList.add('flipped'); return; }
-    const right = (b.dataset.guess === 'fact') === tp.fact;
-    card.classList.add('answered', 'flipped', right ? 'got' : 'missed');
-    card.dataset.badge = right ? t('Got it ✓', 'Sa7 ✓') : t('Missed', 'Fatetak');
-    $('.mf-result', card).textContent = right ? t('You got it! 🎉', 'Sa7 3aleek! 🎉') : t('Not quite — here’s the truth:', 'Msh bel zabt — di el 7a2ee2a:');
-    $$('[data-guess]', card).forEach((x) => (x.disabled = true));
-    b.classList.add('picked');
-    if (right) { mfScore++; sfx.ding(); confettiFrom(card, { count: 24, spread: 0.6 }); } else sfx.buzz();
-    mfDone++;
-    $('#mfScore').textContent = mfScore;
-    if (mfDone === tips.length && mfScore === tips.length) {
-      setTimeout(() => { sfx.tada(); confetti({ count: 160 }); egg('scholar'); }, 500);
-    }
-  }));
-  $('.mf-flip', card).addEventListener('click', () => card.classList.toggle('flipped'));
-  $('.mf-front', card).addEventListener('click', (e) => {
-    if (card.classList.contains('answered') && !e.target.closest('button')) card.classList.add('flipped');
-  });
-});
+initTips($('#mfGrid'), { tips: CONFIG.tips, t, sfx, confetti, confettiFrom, egg, reveal, scoreEl: $('#mfScore'), totalEl: $('#mfTotal') });
 
 // ── Games: tabs, quiz, zapper ──
 initQuiz($('#quiz'), CONFIG, { onPerfect: () => egg('perfect') });
@@ -481,17 +503,184 @@ import('./weather.js').then(async ({ cairoWeather, weatherFx, ICON }) => {
 if (!CONFIG.notes) $$('a[href="#notes"]').forEach((a) => a.remove());
 initNotes($('#notes'), { onWord: (text) => wordEggs(text, true), onSent: () => egg('pen') });
 
-// ── Nav ──
+// ── Nav, the phone tab bar and the "More" sheet ──
 const nav = $('#nav');
 addEventListener('scroll', () => nav.classList.toggle('scrolled', scrollY > 20), { passive: true });
+const SECTIONS = [
+  { id: 'top', icon: '🏠', en: 'Home', ar: 'El bedaya', group: 'home' },
+  { id: 'meet', icon: '🧕', en: 'About her', ar: '3anha', group: 'more' },
+  { id: 'favs-sec', icon: '💗', en: 'Favourites', ar: 'El mofaddal', group: 'more' },
+  { id: 'day', icon: '☀️', en: 'Her day', ar: 'Yomha', group: 'day' },
+  { id: 'then', icon: '🧸', en: 'Then & now', ar: 'Zaman w el naharda', group: 'more' },
+  { id: 'matcha', icon: '🍵', en: 'Matcha bar', ar: 'Matcha bar', group: 'play' },
+  { id: 'tips', icon: '🎓', en: 'Smile School', ar: 'Madraset el ebtesama', group: 'more' },
+  { id: 'smile', icon: '✨', en: 'Smile studio', ar: 'Smile studio', group: 'play' },
+  { id: 'games', icon: '🎮', en: 'Quiz & germs', ar: 'Quiz w garaseem', group: 'play' },
+  { id: 'barca', icon: '⚽', en: 'Penalties', ar: 'Darabat targee7', group: 'play' },
+  { id: 'brush', icon: '🪥', en: 'Brush along', ar: 'E8sely ma3aha', group: 'more' },
+  { id: 'selfie', icon: '📸', en: 'Selfie studio', ar: 'Selfie studio', group: 'more' },
+  { id: 'cookie', icon: '🥠', en: 'Fortune cookie', ar: 'Fortune cookie', group: 'more' },
+  { id: 'hope', icon: '🫙', en: 'Hope jar', ar: 'Bartaman el amal', group: 'more' },
+  { id: 'notes', icon: '💌', en: 'Notes', ar: 'Rasayel', group: 'notes' },
+  { id: 'note', icon: '✉️', en: 'A little note', ar: 'Gawab so8ayar', group: 'notes' },
+].filter((s) => document.getElementById(s.id) && (s.id !== 'notes' || CONFIG.notes));
+let current = 'top';
 const links = $$('.nav-links a, .dock a');
+const dockBtns = $$('.dock [data-group]');
 const spy = new IntersectionObserver((entries) => {
   for (const e of entries) {
     if (!e.isIntersecting) continue;
-    links.forEach((a) => a.classList.toggle('on', a.getAttribute('href') === `#${e.target.id}`));
+    current = e.target.id;
+    const group = SECTIONS.find((s) => s.id === current)?.group || 'more';
+    links.forEach((a) => a.classList.toggle('on', a.getAttribute('href') === `#${current}`));
+    dockBtns.forEach((b) => b.classList.toggle('on', b.dataset.group === group));
   }
 }, { rootMargin: '-45% 0px -50% 0px' });
-['top', 'meet', 'favs-sec', 'tips', 'games', 'brush', 'notes'].forEach((id) => { const el = document.getElementById(id); if (el) spy.observe(el); });
+SECTIONS.forEach((s) => spy.observe(document.getElementById(s.id)));
+
+function goTo(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.scrollIntoView({ behavior: calm ? 'auto' : 'smooth', block: 'start' });
+}
+// jump to one moment of "A day with Dr. Rajiea"
+function goDay(sceneId) {
+  const k = Math.max(0, (CONFIG.day || []).findIndex((s) => s.id === sceneId));
+  const track = $('#dayTrack');
+  if (!track) return;
+  const n = Math.max(1, (CONFIG.day || []).length);
+  const top = track.getBoundingClientRect().top + scrollY;
+  const span = track.offsetHeight - innerHeight;
+  scrollTo({ top: top + span * ((k + 0.5) / n), behavior: calm ? 'auto' : 'smooth' });
+}
+function explore() {
+  sfx.click();
+  const s = sheet({
+    title: t('Explore her world', 'Ekteshfy 3alamha'),
+    className: 'xp',
+    body: `<div class="xp-grid">${SECTIONS.map((x, i) => `
+      <button type="button" class="xp-tile${x.id === current ? ' on' : ''}" data-id="${x.id}" style="--i:${i}">
+        <span class="xp-icon" aria-hidden="true">${x.icon}</span><b>${t(x.en, x.ar)}</b>
+      </button>`).join('')}</div>
+      <div class="xp-tools">
+        ${motion.possible ? `<button type="button" class="xp-motion" data-motion>${motion.live ? t('✨ Tilt & shake are on', '✨ El tilt w el hazz sha88aleen') : t('✨ Turn on tilt & shake', '✨ Sha88aly el tilt w el hazz')}</button>` : ''}
+        <p class="xp-tips">${t('Double-tap anywhere for hearts · hold a favourite to peek · swipe this bar sideways to hop between sections', 'Dosy dablet-tap f ay 7etta 3ashan el 2loob · emseky ay 7aga mofaddala 3ashan tbossy · es7aby el bar da yemeen w shmal 3ashan tetna2aly')}</p>
+      </div>`,
+  });
+  $$('.xp-tile', s.el).forEach((b) => b.addEventListener('click', () => {
+    buzz(8);
+    s.close();
+    setTimeout(() => goTo(b.dataset.id), 200);
+  }));
+  $('[data-motion]', s.el)?.addEventListener('click', async (e) => {
+    const b = e.currentTarget;
+    const ok = await motion.ask();
+    b.textContent = ok ? t('✨ Tilt & shake are on', '✨ El tilt w el hazz sha88aleen') : t('Motion isn’t available here', 'El 7araka msh mota7a hena');
+    if (ok) buzz([10, 40, 10]);
+  });
+}
+$$('[data-explore]').forEach((b) => b.addEventListener('click', explore));
+$$('.dock a').forEach((a) => a.addEventListener('click', () => buzz(6)));
+// swipe the tab bar sideways to hop to the next / previous section
+{
+  const dock = $('.dock');
+  let sx = 0, sy = 0, st = 0, on = false, swiped = false;
+  dock.addEventListener('pointerdown', (e) => { on = true; swiped = false; sx = e.clientX; sy = e.clientY; st = performance.now(); });
+  dock.addEventListener('pointerup', (e) => {
+    if (!on) return;
+    on = false;
+    const dx = e.clientX - sx, dy = e.clientY - sy;
+    if (Math.abs(dx) > 30) swiped = true;
+    if (Math.abs(dx) < 50 || Math.abs(dy) > 40 || performance.now() - st > 700) return;
+    const i = SECTIONS.findIndex((s) => s.id === current);
+    const next = SECTIONS[Math.max(0, Math.min(SECTIONS.length - 1, i + (dx < 0 ? 1 : -1)))];
+    if (next && next.id !== current) {
+      buzz(10);
+      dock.classList.remove('hop-l', 'hop-r');
+      void dock.offsetWidth;
+      dock.classList.add(dx < 0 ? 'hop-l' : 'hop-r');
+      goTo(next.id);
+      toast(`<span>${next.icon}</span><b>${t(next.en, next.ar)}</b>`, 1400);
+    }
+  });
+  dock.addEventListener('pointercancel', () => { on = false; });
+  dock.addEventListener('click', (e) => { if (swiped) { swiped = false; e.preventDefault(); e.stopPropagation(); } }, true);
+}
+
+// ── Phone extras: double-tap hearts, shake for a compliment, tilt the hero ──
+let hearts = 0;
+doubleTapHearts(() => {
+  if (++hearts === 15) egg('hearts');
+});
+const compliments = CONFIG.compliments || [];
+let lastCompliment = -1;
+motion.onShake(() => {
+  if (!compliments.length || document.querySelector('.vault, .sheet-wrap')) return;
+  let k = Math.floor(Math.random() * compliments.length);
+  if (k === lastCompliment) k = (k + 1) % compliments.length;
+  lastCompliment = k;
+  buzz([20, 60, 20]);
+  sfx.chirp();
+  const line = compliments[k];
+  const heroOn = $('#top').getBoundingClientRect().bottom > innerHeight * 0.4;
+  if (heroOn && rajiea) { rajiea.play('jump'); rajiea.say(line, 3800); }
+  else toast(`<span>💗</span><b>${esc(line)}</b>`, 4200);
+});
+{
+  const hero = $('#top');
+  const chip = $('#motionChip');
+  let tx = 0, ty = 0, gx = 0, gy = 0, raf = 0, heroOn = true;
+  const step = () => {
+    gx += (tx - gx) * 0.08;
+    gy += (ty - gy) * 0.08;
+    hero.style.setProperty('--tx', gx.toFixed(3));
+    hero.style.setProperty('--ty', gy.toFixed(3));
+    raf = heroOn && (Math.abs(tx - gx) + Math.abs(ty - gy) > 0.002) ? requestAnimationFrame(step) : 0;
+  };
+  const aim = (x, y) => { tx = x; ty = y; if (!raf && heroOn && !calm) raf = requestAnimationFrame(step); };
+  onVisible(hero, (v) => { heroOn = v; if (v) aim(tx, ty); });
+  if (!calm) {
+    motion.onTilt((x, y) => aim(x, y));
+    if (fine) hero.addEventListener('pointermove', (e) => aim((e.clientX / innerWidth - 0.5) * 1.4, (e.clientY / innerHeight - 0.5) * 1.4), { passive: true });
+  }
+  // iPhones ask once, on a tap
+  if (motion.needsAsk && coarse) {
+    chip.hidden = false;
+    chip.addEventListener('click', async () => {
+      const ok = await motion.ask();
+      chip.textContent = ok ? t('✨ Tilt your phone — and shake it', '✨ Mayyely el mobile — w hezzeeh') : t('Motion isn’t available here', 'El 7araka msh mota7a hena');
+      if (ok) { buzz([10, 40, 10]); setTimeout(() => chip.classList.add('gone'), 2600); }
+    });
+  }
+}
+// first visit on a phone: a small note about the hidden gestures
+if (coarse) {
+  let seen = false;
+  try { seen = localStorage.getItem('rajiea-gestures') === '1'; } catch {}
+  if (!seen) setTimeout(() => {
+    if (document.querySelector('.vault, .sheet-wrap')) return;
+    toast(`<span>👆</span><b>${t('Psst — double-tap anywhere for hearts, hold a favourite to peek, and shake your phone for a compliment.', 'Psst — dosy dablet-tap f ay 7etta 3ashan el 2loob, emseky ay 7aga mofaddala 3ashan tbossy, w hezzy el mobile 3ashan kelma 7elwa.')}</b>`, 6500);
+    try { localStorage.setItem('rajiea-gestures', '1'); } catch {}
+  }, 9000);
+}
+
+// ── The bigger sections load only when they're close ──
+const ctx = {
+  get rajiea() { return rajiea; }, CONFIG, t, isAr, esc, sfx, confetti, confettiFrom, egg, buzz, motion, sheet, toast, onVisible, calm, coarse, goTo,
+};
+const LAZY = [
+  ['dayStage', () => import('./sections/day.js').then((m) => m.initDay($('#dayStage'), $('#dayTrack'), ctx))],
+  ['mb', () => import('./sections/matcha.js').then((m) => m.initMatcha($('#mb'), ctx))],
+  ['ss', () => import('./sections/smile.js').then((m) => m.initSmile($('#ss'), ctx))],
+  ['pk', () => import('./sections/penalty.js').then((m) => m.initPenalty($('#pk'), ctx))],
+  ['sf', () => import('./sections/selfie.js').then((m) => m.initSelfie($('#sf'), ctx))],
+  ['fc', () => import('./sections/cookie.js').then((m) => m.initCookie($('#fc'), ctx))],
+  ['hj', () => import('./sections/hope.js').then((m) => m.initHope($('#hj'), ctx))],
+];
+for (const [id, load] of LAZY) {
+  const el = document.getElementById(id);
+  if (el) whenNear(el, () => load().catch((e) => console.warn(id, e)), '900px 0px');
+}
 
 // ── Easter eggs ──
 const WORDS = [

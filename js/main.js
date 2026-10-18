@@ -111,150 +111,156 @@ const LINES = {
 };
 const OUTFIT_LINES = { clinic: t('Back to the clinic 🦷', 'Rag3a el 3eyada 🦷'), city: t('City day! 📱', 'Yom khroog! 📱'), cozy: t('Cozy mode ☁️', 'Cozy mode ☁️') };
 
-try {
-  const { createRajiea, createLittleRajiea, OUTFITS } = await import('./character.js');
-  rajiea = createRajiea($('#stage'), { bubble: $('#bubble'), lines: CONFIG.bubbleLines, badge: `Dr. ${CONFIG.name}` });
-  rajiea.onPop = () => sfx.pop();
-  let pokes = [];
-  rajiea.onPoke = () => {
-    sfx.boop();
-    const now = performance.now();
-    pokes = [...pokes.filter((x) => now - x < 4000), now];
-    if (pokes.length >= 7) {
-      pokes = [];
-      setTimeout(() => { rajiea.play('dizzy'); rajiea.say(t('Okay, okay — I’m ticklish 😂', 'Khalas khalas — ana btza8za8 😂'), 2800); egg('tickle'); }, 300);
-    }
-  };
-  rajiea.onHold = () => { rajiea.play('blush'); rajiea.say(t('Hehe, stop it 🙈', 'Hihi, battal ba2a 🙈'), 2400); sfx.giggle(); egg('hold'); };
-  rajiea.onSpin = () => { rajiea.play('dizzy'); rajiea.say(t('Woah… the room is spinning 😵‍💫', 'Eh dah… el donya btleff 😵‍💫'), 2600); sfx.whoosh(); egg('spinner'); };
-
-  // selfies come out as polaroids
-  let selfies = 0;
-  const stageEl = $('#stage');
-  rajiea.onSnap = () => {
-    sfx.shutter();
-    stageEl.classList.remove('flash');
-    void stageEl.offsetWidth;
-    stageEl.classList.add('flash');
-    const src = rajiea.snap();
-    const img = new Image();
-    img.onload = () => {
-      const cv = document.createElement('canvas');
-      const S = 520;
-      cv.width = S; cv.height = S;
-      const g = cv.getContext('2d');
-      const grd = g.createLinearGradient(0, 0, S, S);
-      grd.addColorStop(0, '#ffe1ee'); grd.addColorStop(1, '#f7e6d6');
-      g.fillStyle = grd;
-      g.fillRect(0, 0, S, S);
-      const k = Math.max(S / img.width, S / img.height) * 1.45;
-      const w = img.width * k, h = img.height * k;
-      g.drawImage(img, (S - w) / 2, -h * 0.02, w, h);
-      const url = cv.toDataURL('image/jpeg', 0.9);
-      const day = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-      const p = document.createElement('a');
-      p.className = 'polaroid';
-      p.href = url;
-      p.download = 'rajiea-selfie.jpg';
-      p.style.setProperty('--r', `${(Math.random() - 0.5) * 18}deg`);
-      p.style.setProperty('--x', `${(Math.random() - 0.5) * 30}px`);
-      p.innerHTML = `<img src="${url}" alt="${t('A selfie with Rajiea', 'Selfie ma3a Rajiea')}"><span>${t('Rajiea', 'Rajiea')} · ${day}</span>`;
-      p.title = t('Tap to save', 'Dos 3ashan te7fazha');
-      stageEl.appendChild(p);
-      const all = $$('.polaroid', stageEl);
-      if (all.length > 3) all[0].remove();
-      setTimeout(() => p.classList.add('gone'), 7000);
-      setTimeout(() => p.remove(), 7800);
-    };
-    img.src = src;
-    if (++selfies >= 3) egg('selfie');
-  };
-
-  const tried = new Set();
-  $$('[data-move]').forEach((b) => b.addEventListener('click', () => {
-    const m = b.dataset.move;
-    rajiea.play(m);
-    rajiea.say(LINES[m]);
-    sfx.boop();
-    tried.add(m);
-    if (tried.size >= $$('[data-move]').length) egg('moves');
-  }));
-
-  const swatches = $$('[data-hijab]');
-  const markSwatch = (hex) => swatches.forEach((s) => s.setAttribute('aria-checked', String(s.dataset.hijab.toLowerCase() === hex.toLowerCase())));
-  const colours = new Set();
-  let pinkTaps = 0, pinkTimer = 0;
-  swatches.forEach((s) => s.addEventListener('click', () => {
-    rajiea.setHijab(s.dataset.hijab);
-    markSwatch(s.dataset.hijab);
-    sfx.click();
-    colours.add(s.dataset.hijab);
-    if (colours.size >= swatches.length) egg('stylist');
-    if (s.dataset.hijab === '#ff6fa8') {
-      pinkTaps++;
-      clearTimeout(pinkTimer);
-      pinkTimer = setTimeout(() => (pinkTaps = 0), 1800);
-      if (pinkTaps >= 3) {
-        pinkTaps = 0;
-        rajiea.setHijab('#ff1f8f');
-        document.body.classList.add('hotpink');
-        rajiea.play('dance');
-        rajiea.say(t('HOT PINK. Always. 💗', 'Hot pink. Dayman 💗'), 3000);
-        confetti({ x: innerWidth / 2, y: innerHeight / 3, count: 90, emoji: ['💗', '💖', '🩷'] });
-        sfx.tada();
-        egg('hotpink');
-        setTimeout(() => document.body.classList.remove('hotpink'), 9000);
-      }
-    }
-  }));
-
-  const outfitsTried = new Set();
-  $$('[data-outfit]').forEach((b) => b.addEventListener('click', () => {
-    const name = b.dataset.outfit;
-    rajiea.setOutfit(name);
-    markSwatch(OUTFITS[name].hijab);
-    $$('[data-outfit]').forEach((o) => o.setAttribute('aria-pressed', String(o === b)));
-    rajiea.play('jump');
-    rajiea.say(OUTFIT_LINES[name]);
-    sfx.pop();
-    outfitsTried.add(name);
-    if (outfitsTried.size >= 3) egg('wardrobe');
-  }));
-
-  const zoomBtn = $('#zoomBtn');
-  const paintZoom = (on) => {
-    zoomBtn.textContent = on ? t('↩ Full body', '↩ El soora kamla') : t('🔍 Close-up', '🔍 2arrab');
-    zoomBtn.setAttribute('aria-pressed', String(on));
-  };
-  paintZoom(false);
-  zoomBtn.addEventListener('click', () => { paintZoom(rajiea.toggleClose()); sfx.click(); });
-
-  // Little Rajiea is only built when she's about to scroll into view
-  const babyStage = $('#babyStage');
-  const lazy = new IntersectionObserver(([e]) => {
-    if (!e.isIntersecting) return;
-    lazy.disconnect();
-    const baby = createLittleRajiea(babyStage, { bubble: $('#babyBubble'), lines: CONFIG.babyLines });
-    let babyTaps = [];
-    baby.onGiggle = () => {
-      sfx.giggle();
+// the page shows straight away; the 3D is built in small steps behind it and fades in when ready
+async function start3D() {
+  try {
+    const { createRajiea, createLittleRajiea, OUTFITS } = await import('./character.js');
+    rajiea = await createRajiea($('#stage'), { bubble: $('#bubble'), lines: CONFIG.bubbleLines, badge: `Dr. ${CONFIG.name}` });
+    rajiea.onPop = () => sfx.pop();
+    let pokes = [];
+    rajiea.onPoke = () => {
+      sfx.boop();
       const now = performance.now();
-      babyTaps = [...babyTaps.filter((x) => now - x < 5000), now];
-      if (babyTaps.length >= 5) { babyTaps = []; egg('baby'); confettiFrom(babyStage, { count: 40, emoji: ['🧸', '💛', '✨'] }); }
+      pokes = [...pokes.filter((x) => now - x < 4000), now];
+      if (pokes.length >= 7) {
+        pokes = [];
+        setTimeout(() => { rajiea.play('dizzy'); rajiea.say(t('Okay, okay — I’m ticklish 😂', 'Khalas khalas — ana btza8za8 😂'), 2800); egg('tickle'); }, 300);
+      }
     };
-    $('#babyGiggle').addEventListener('click', () => baby.giggle());
-  }, { rootMargin: '900px 0px' });
-  lazy.observe(babyStage);
+    rajiea.onHold = () => { rajiea.play('blush'); rajiea.say(t('Hehe, stop it 🙈', 'Hihi, battal ba2a 🙈'), 2400); sfx.giggle(); egg('hold'); };
+    rajiea.onSpin = () => { rajiea.play('dizzy'); rajiea.say(t('Woah… the room is spinning 😵‍💫', 'Eh dah… el donya btleff 😵‍💫'), 2600); sfx.whoosh(); egg('spinner'); };
 
-  requestAnimationFrame(() => requestAnimationFrame(() => {
-    hideLoader();
+    // selfies come out as polaroids
+    let selfies = 0;
+    const stageEl = $('#stage');
+    rajiea.onSnap = () => {
+      sfx.shutter();
+      stageEl.classList.remove('flash');
+      void stageEl.offsetWidth;
+      stageEl.classList.add('flash');
+      const src = rajiea.snap();
+      const img = new Image();
+      img.onload = () => {
+        const cv = document.createElement('canvas');
+        const S = 520;
+        cv.width = S; cv.height = S;
+        const g = cv.getContext('2d');
+        const grd = g.createLinearGradient(0, 0, S, S);
+        grd.addColorStop(0, '#ffe1ee'); grd.addColorStop(1, '#f7e6d6');
+        g.fillStyle = grd;
+        g.fillRect(0, 0, S, S);
+        const k = Math.max(S / img.width, S / img.height) * 1.45;
+        const w = img.width * k, h = img.height * k;
+        g.drawImage(img, (S - w) / 2, -h * 0.02, w, h);
+        const url = cv.toDataURL('image/jpeg', 0.9);
+        const day = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+        const p = document.createElement('a');
+        p.className = 'polaroid';
+        p.href = url;
+        p.download = 'rajiea-selfie.jpg';
+        p.style.setProperty('--r', `${(Math.random() - 0.5) * 18}deg`);
+        p.style.setProperty('--x', `${(Math.random() - 0.5) * 30}px`);
+        p.innerHTML = `<img src="${url}" alt="${t('A selfie with Rajiea', 'Selfie ma3a Rajiea')}"><span>${t('Rajiea', 'Rajiea')} · ${day}</span>`;
+        p.title = t('Tap to save', 'Dos 3ashan te7fazha');
+        stageEl.appendChild(p);
+        const all = $$('.polaroid', stageEl);
+        if (all.length > 3) all[0].remove();
+        setTimeout(() => p.classList.add('gone'), 7000);
+        setTimeout(() => p.remove(), 7800);
+      };
+      img.src = src;
+      if (++selfies >= 3) egg('selfie');
+    };
+
+    const tried = new Set();
+    $$('[data-move]').forEach((b) => b.addEventListener('click', () => {
+      const m = b.dataset.move;
+      rajiea.play(m);
+      rajiea.say(LINES[m]);
+      sfx.boop();
+      tried.add(m);
+      if (tried.size >= $$('[data-move]').length) egg('moves');
+    }));
+
+    const swatches = $$('[data-hijab]');
+    const markSwatch = (hex) => swatches.forEach((s) => s.setAttribute('aria-checked', String(s.dataset.hijab.toLowerCase() === hex.toLowerCase())));
+    const colours = new Set();
+    let pinkTaps = 0, pinkTimer = 0;
+    swatches.forEach((s) => s.addEventListener('click', () => {
+      rajiea.setHijab(s.dataset.hijab);
+      markSwatch(s.dataset.hijab);
+      sfx.click();
+      colours.add(s.dataset.hijab);
+      if (colours.size >= swatches.length) egg('stylist');
+      if (s.dataset.hijab === '#ff6fa8') {
+        pinkTaps++;
+        clearTimeout(pinkTimer);
+        pinkTimer = setTimeout(() => (pinkTaps = 0), 1800);
+        if (pinkTaps >= 3) {
+          pinkTaps = 0;
+          rajiea.setHijab('#ff1f8f');
+          document.body.classList.add('hotpink');
+          rajiea.play('dance');
+          rajiea.say(t('HOT PINK. Always. 💗', 'Hot pink. Dayman 💗'), 3000);
+          confetti({ x: innerWidth / 2, y: innerHeight / 3, count: 90, emoji: ['💗', '💖', '🩷'] });
+          sfx.tada();
+          egg('hotpink');
+          setTimeout(() => document.body.classList.remove('hotpink'), 9000);
+        }
+      }
+    }));
+
+    const outfitsTried = new Set();
+    $$('[data-outfit]').forEach((b) => b.addEventListener('click', () => {
+      const name = b.dataset.outfit;
+      rajiea.setOutfit(name);
+      markSwatch(OUTFITS[name].hijab);
+      $$('[data-outfit]').forEach((o) => o.setAttribute('aria-pressed', String(o === b)));
+      rajiea.play('jump');
+      rajiea.say(OUTFIT_LINES[name]);
+      sfx.pop();
+      outfitsTried.add(name);
+      if (outfitsTried.size >= 3) egg('wardrobe');
+    }));
+
+    const zoomBtn = $('#zoomBtn');
+    const paintZoom = (on) => {
+      zoomBtn.textContent = on ? t('↩ Full body', '↩ El soora kamla') : t('🔍 Close-up', '🔍 2arrab');
+      zoomBtn.setAttribute('aria-pressed', String(on));
+    };
+    paintZoom(false);
+    zoomBtn.addEventListener('click', () => { paintZoom(rajiea.toggleClose()); sfx.click(); });
+
+    // Little Rajiea is only built when she's about to scroll into view
+    const babyStage = $('#babyStage');
+    const lazy = new IntersectionObserver(([e]) => {
+      if (!e.isIntersecting) return;
+      lazy.disconnect();
+      buildBaby();
+    }, { rootMargin: '900px 0px' });
+    lazy.observe(babyStage);
+    async function buildBaby() {
+      const baby = await createLittleRajiea(babyStage, { bubble: $('#babyBubble'), lines: CONFIG.babyLines });
+      let babyTaps = [];
+      baby.onGiggle = () => {
+        sfx.giggle();
+        const now = performance.now();
+        babyTaps = [...babyTaps.filter((x) => now - x < 5000), now];
+        if (babyTaps.length >= 5) { babyTaps = []; egg('baby'); confettiFrom(babyStage, { count: 40, emoji: ['🧸', '💛', '✨'] }); }
+      };
+      $('#babyGiggle').addEventListener('click', () => baby.giggle());
+    }
+
+    await rajiea.stage.shown;
     setTimeout(() => { rajiea.play('wave'); rajiea.say(CONFIG.bubbleLines[0], 3200); }, 700);
-  }));
-} catch (err) {
-  console.warn('3D unavailable', err);
-  document.body.classList.add('no3d');
-  hideLoader();
+    greetings();
+  } catch (err) {
+    console.warn('3D unavailable', err);
+    document.body.classList.add('no3d');
+  }
 }
+start3D();
+requestAnimationFrame(() => requestAnimationFrame(hideLoader));
 
 // ── The pink banner pauses while you touch it, so things on it are easy to tap ──
 {
@@ -784,17 +790,17 @@ soundBtn.addEventListener('click', () => {
   }
 });
 
-// friends: rajiea.com/?hi=Sara
-const hi = new URLSearchParams(location.search).get('hi');
-if (hi && rajiea) {
-  const nameHi = hi.replace(/[^\p{L}\p{N} '-]/gu, '').slice(0, 24).trim();
-  if (nameHi) setTimeout(() => { rajiea.play('wave'); rajiea.say(t(`Hi ${nameHi}! Welcome 💖`, `Ahlan ya ${nameHi}! Nawwart 💖`), 4200); egg('friend'); }, 4200);
+// once she is on screen: a hello for friends (rajiea.com/?hi=Sara), night owls and early birds
+function greetings() {
+  const hi = new URLSearchParams(location.search).get('hi');
+  if (hi && rajiea) {
+    const nameHi = hi.replace(/[^\p{L}\p{N} '-]/gu, '').slice(0, 24).trim();
+    if (nameHi) setTimeout(() => { rajiea?.play('wave'); rajiea?.say(t(`Hi ${nameHi}! Welcome 💖`, `Ahlan ya ${nameHi}! Nawwart 💖`), 4200); egg('friend'); }, 4200);
+  }
+  const hour = new Date().getHours();
+  if (hour < 5 && rajiea) setTimeout(() => { rajiea?.say(t('It’s late — did you brush before bed? 🌙', 'El wa2t et2akhar — 8asalt snanak 2abl el nom? 🌙'), 4200); egg('night'); }, 8000);
+  if (hour >= 5 && hour < 7 && rajiea) setTimeout(() => { rajiea?.play('matcha'); rajiea?.say(t('Up early! Matcha first? 🍵☀️', 'Sa7y badry! Matcha el awel? 🍵☀️'), 4200); egg('early'); }, 8000);
 }
-
-// night owls and early birds
-const hour = new Date().getHours();
-if (hour < 5 && rajiea) setTimeout(() => { rajiea.say(t('It’s late — did you brush before bed? 🌙', 'El wa2t et2akhar — 8asalt snanak 2abl el nom? 🌙'), 4200); egg('night'); }, 8000);
-if (hour >= 5 && hour < 7 && rajiea) setTimeout(() => { rajiea.play('matcha'); rajiea.say(t('Up early! Matcha first? 🍵☀️', 'Sa7y badry! Matcha el awel? 🍵☀️'), 4200); egg('early'); }, 8000);
 
 // developers
 console.log('%c🦷 Hi, curious one.', 'font: 600 18px Georgia, serif; color: #ff2e88');

@@ -2,7 +2,7 @@
 // proportions), a short bob with a fringe, a sleeveless navy top, a white skirt with a navy band,
 // soft bare arms, legs and feet. Rigid parts on a few pivots, so it stays light.
 import * as THREE from '../vendor/three.module.min.js';
-import { PI, TAU, clamp, lerp, smooth, spline, spread, surface, weldRow, canvas, tex, rng, normalMap, heightOf, skinMaterial, clothMaterial, weave, merge } from './character-kit.js';
+import { PI, TAU, clamp, lerp, smooth, spline, spread, surface, weldRow, canvas, tex, rng, normalMap, heightOf, skinMaterial, clothMaterial, weave, merge, nextTask } from './character-kit.js';
 import { ADULT, buildHead } from './character-head.js';
 
 // a child's face in the same centimetre frame: a bigger skull, a shorter lower face, a small
@@ -37,7 +37,7 @@ const HS = 0.026; // scene units per head centimetre
 const HAIR = 0x553220;
 
 // ── the head round the face: where the skin is, front (face) or back (skull) ──
-function headShape(sc, S) {
+export function headShape(sc, S) {
   const A = sc.A, Cb = spline(S.back), G = S.grid, v = new THREE.Vector3(), top = S.width[S.width.length - 1][0];
   // the face height on a coarse table, so the hair can be fitted quickly
   const zx = 7.6, st = 0.2, nx = Math.round((2 * zx) / st) + 1, ny = Math.round((G.y1 - G.y0) / st) + 1, Z = new Float32Array(nx * ny);
@@ -71,27 +71,37 @@ function headShape(sc, S) {
 }
 
 // skin round the back and sides of the skull (mostly under the hair), a little inside the face
-function skullGeometry(H, S) {
-  const ys = spread(56, -7.2, H.top - 0.1);
+export function skullGeometry(H, { y0 = -7.2, tint } = {}) {
+  const ys = spread(56, y0, H.top - 0.1);
   const geo = surface(64, 56, (i, j, p) => {
     const th = (i / 64) * TAU - PI, y = ys[j];
     const r = H.radial(th, y) - (Math.cos(th) > 0 ? 0.25 : 0);
     p.set(r * Math.sin(th), y, r * Math.cos(th));
   }, { wrap: true });
   weldRow(geo, 56, new THREE.Vector3(0, 1, 0));
+  // optional colour per point (for example a beard's shadow under the jaw)
+  if (tint) {
+    const pos = geo.attributes.position, col = new Float32Array(pos.count * 3), v = new THREE.Vector3();
+    for (let k = 0; k < pos.count; k++) col.set(tint(v.fromBufferAttribute(pos, k)), k * 3);
+    geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  }
   return geo;
 }
 
-// a short bob with a fringe: a shell over the skull, thicker on top, rolled under at the ends
-function hairGeometry(H, { NC = 176, NR = 60, NRoll = 6 } = {}) {
-  const O = [0, 2.6, -0.8];
-  const zone = (th) => smooth(0.68, 0.94, Math.abs(th)); // 0 fringe, 1 sides and back
-  const hemY = (th) => {
+// a shell of hair over the skull, rolled under at the ends; by default a short bob with a fringe
+const BOB = {
+  O: [0, 2.6, -0.8],
+  zone: (th) => smooth(0.68, 0.94, Math.abs(th)), // 0 fringe, 1 sides and back
+  hemY(th) {
     const a = Math.abs(th);
     const fringe = 3.05 + 0.45 * (a / 0.8) ** 2 + 0.05 * Math.sin(th * 30 + 1);
-    return lerp(fringe, lerp(-4.3, -4.8, smooth(1.6, 2.8, a)), zone(th));
-  };
-  const thick = (th, y) => { const z = zone(th); return lerp(0.4, 0.5, z) + z * 0.45 * Math.exp(-(((y - 4.5) / 3.6) ** 2)) + 0.7 * smooth(5, 12, y); };
+    return lerp(fringe, lerp(-4.3, -4.8, smooth(1.6, 2.8, a)), this.zone(th));
+  },
+  thick(th, y) { const z = this.zone(th); return lerp(0.4, 0.5, z) + z * 0.45 * Math.exp(-(((y - 4.5) / 3.6) ** 2)) + 0.7 * smooth(5, 12, y); },
+  dens: (th) => 1 + 2.4 * Math.exp(-(((Math.abs(th) - 0.82) / 0.13) ** 2)),
+};
+export function hairGeometry(H, { NC = 176, NR = 60, NRoll = 6, style = BOB } = {}) {
+  const { O } = style, zone = (th) => style.zone(th), hemY = (th) => style.hemY(th), thick = (th, y) => style.thick(th, y);
   const dir = (th, ph) => [Math.sin(ph) * Math.sin(th), Math.cos(ph), Math.sin(ph) * Math.cos(th)];
   const reach = (d) => {
     const at = (t) => H.inside(O[0] + d[0] * t, O[1] + d[1] * t, O[2] + d[2] * t);
@@ -105,7 +115,7 @@ function hairGeometry(H, { NC = 176, NR = 60, NRoll = 6 } = {}) {
     const d = dir(th, ph), t = reach(d), y = O[1] + d[1] * t, k = t + thick(th, y) * taper;
     return [new THREE.Vector3(O[0] + d[0] * k, O[1] + d[1] * k, O[2] + d[2] * k), new THREE.Vector3(...d), thick(th, y) * taper];
   };
-  const cols = spread(NC, -PI, PI, (th) => 1 + 2.4 * Math.exp(-(((Math.abs(th) - 0.82) / 0.13) ** 2)));
+  const cols = spread(NC, -PI, PI, style.dens);
   const rows = NR + NRoll, pts = [];
   for (let i = 0; i <= NC; i++) {
     const th = cols[i], target = hemY(th), fr = 1 - zone(th);
@@ -129,13 +139,13 @@ function hairGeometry(H, { NC = 176, NR = 60, NRoll = 6 } = {}) {
   weldRow(geo, 0, new THREE.Vector3(0, 1, 0));
   return geo;
 }
-function hairMaterial() {
-  const S = 256, cc = canvas(S), hc = canvas(S), g = cc.getContext('2d'), h = hc.getContext('2d'), r = rng(31);
-  g.fillStyle = '#553220'; g.fillRect(0, 0, S, S);
+export function hairMaterial({ base = '#553220', dark = [34, 19, 11], light = [130, 84, 52], sheen = 0x8a5a3a, repeat = [6, 1] } = {}) {
+  const S = 256, cc = canvas(S), hc = canvas(S), g = cc.getContext('2d'), h = hc.getContext('2d', { willReadFrequently: true }), r = rng(31);
+  g.fillStyle = base; g.fillRect(0, 0, S, S);
   h.fillStyle = 'rgb(128,128,128)'; h.fillRect(0, 0, S, S);
   for (let k = 0; k < 420; k++) {
     const x0 = r() * S, w = 1 + r() * 1.6, dark = r() < 0.5, a = 0.12 + r() * 0.2, wave = (r() - 0.5) * 7, ph = r() * TAU;
-    const cg = dark ? `rgba(34,19,11,${a})` : `rgba(${130 + r() * 40},${84 + r() * 26},${52 + r() * 18},${a * 0.8})`;
+    const cg = dark ? `rgba(${dark},${a})` : `rgba(${light[0] + r() * 40},${light[1] + r() * 26},${light[2] + r() * 18},${a * 0.8})`;
     for (const [ctx, st] of [[g, cg], [h, dark ? 'rgba(40,40,40,0.55)' : 'rgba(225,225,225,0.55)']]) {
       ctx.strokeStyle = st;
       ctx.lineWidth = w;
@@ -147,8 +157,8 @@ function hairMaterial() {
     }
   }
   const m = new THREE.MeshPhysicalMaterial({
-    color: 0xffffff, map: tex(cc, { repeat: [6, 1] }), normalMap: normalMap(heightOf(hc), S, 1.6, [6, 1]), roughness: 0.5, specularIntensity: 0.5,
-    sheen: 0.5, sheenRoughness: 0.4, sheenColor: new THREE.Color(0x8a5a3a),
+    color: 0xffffff, map: tex(cc, { repeat }), normalMap: normalMap(heightOf(hc), S, 1.6, repeat), roughness: 0.5, specularIntensity: 0.5,
+    sheen: 0.5, sheenRoughness: 0.4, sheenColor: new THREE.Color(sheen),
   });
   m.normalScale.set(0.45, 0.45);
   return m;
@@ -204,7 +214,7 @@ function skirtGeometry(y0, y1, lift = 0, lip = false) {
 }
 
 // a soft limb round a curve; rad(t) gives the radius from 0 (top) to 1 (end)
-function limb(pts, rad, { segs = 36, cols = 20, flat = 0.95 } = {}) {
+export function limb(pts, rad, { segs = 36, cols = 20, flat = 0.95 } = {}) {
   const curve = new THREE.CatmullRomCurve3(pts.map((q) => new THREE.Vector3(...q)));
   const P = new THREE.Vector3(), T = new THREE.Vector3(), Sx = new THREE.Vector3(), Sz = new THREE.Vector3(), F = new THREE.Vector3(0, 0, 1);
   return surface(cols, segs, (i, j, p) => {
@@ -216,13 +226,13 @@ function limb(pts, rad, { segs = 36, cols = 20, flat = 0.95 } = {}) {
     p.copy(P).addScaledVector(Sx, Math.cos(a) * r).addScaledVector(Sz, Math.sin(a) * r * flat);
   }, { wrap: true, flip: true });
 }
-const mirrorGeo = (geo) => {
+export const mirrorGeo = (geo) => {
   geo.applyMatrix4(new THREE.Matrix4().makeScale(-1, 1, 1));
   const idx = geo.index.array;
   for (let k = 0; k < idx.length; k += 3) { const t = idx[k + 1]; idx[k + 1] = idx[k + 2]; idx[k + 2] = t; }
   return geo;
 };
-const placed = (geo, pos, rot = [0, 0, 0], scl = [1, 1, 1]) => geo.applyMatrix4(new THREE.Matrix4().compose(new THREE.Vector3(...pos), new THREE.Quaternion().setFromEuler(new THREE.Euler(...rot)), new THREE.Vector3(...scl)));
+export const placed = (geo, pos, rot = [0, 0, 0], scl = [1, 1, 1]) => geo.applyMatrix4(new THREE.Matrix4().compose(new THREE.Vector3(...pos), new THREE.Quaternion().setFromEuler(new THREE.Euler(...rot)), new THREE.Vector3(...scl)));
 // a small chubby hand hanging from the wrist, palm towards -x, fingers curled by 'curl'
 function handGeometry(side, curl) {
   const parts = [placed(new THREE.SphereGeometry(1, 20, 14), [-0.002, -0.045, 0.004], [0, 0, 0], [0.024, 0.045, 0.034])];
@@ -257,11 +267,11 @@ function footGeometry(side) {
 }
 
 // builds the child into 'body'; returns the moving parts
-export function buildChild(body) {
+export async function buildChild(body) {
   const skin = skinMaterial({ color: 0xf1cdb9, roughness: 0.55 });
   const navy = clothMaterial({ color: 0x2e2648, roughness: 0.78, sheen: 0.8, normalMap: weave('jersey', [1, 1]), normalScale: 0.45 });
   const white = clothMaterial({ color: 0xfbf6f0, roughness: 0.84, sheen: 0.7, normalMap: weave('twill', [1, 1]), normalScale: 0.35, side: THREE.DoubleSide });
-  const gold = new THREE.MeshPhysicalMaterial({ color: 0xe4b35e, metalness: 1, roughness: 0.22, clearcoat: 0.4 });
+  const gold = new THREE.MeshStandardMaterial({ color: 0xe4b35e, metalness: 1, roughness: 0.22 });
   const mesh = (geo, mat, parent, cast = true) => { const m = new THREE.Mesh(geo, mat); m.castShadow = cast; m.receiveShadow = true; parent.add(m); return m; };
 
   // legs stand on the floor; the upper body sways on the hips
@@ -318,9 +328,10 @@ export function buildChild(body) {
   rig.position.set(0, 0.184, -NECK.z);
   rig.scale.setScalar(HS);
   head.add(rig);
-  const face = buildHead(rig, CHILD, { hairline });
+  const face = await buildHead(rig, CHILD, { hairline });
+  await nextTask();
   const H = headShape(face.sc, CHILD);
-  mesh(skullGeometry(H, CHILD), skin, rig);
+  mesh(skullGeometry(H), skin, rig);
   const neck = mesh(new THREE.CylinderGeometry(NECK.r / HS, (NECK.r + 0.006) / HS, 7.5, 32, 1, true), skin, rig);
   neck.position.set(0, -8.4, NECK.z / HS);
   mesh(hairGeometry(H), hairMaterial(), rig);

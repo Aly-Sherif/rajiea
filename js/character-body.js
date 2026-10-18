@@ -1,5 +1,6 @@
 // The grown-up body: a skeleton with skinned clothes, sleeves, hands with five fingers,
 // trousers and shoes. Built from smooth lofted surfaces, so there are no ball joints.
+// The layout, torso shape and hand size can be swapped for another figure.
 import * as THREE from '../vendor/three.module.min.js';
 import { PI, TAU, clamp, lerp, smooth, spline, spread, surface, weldRow, skinWeights, merge, skinMaterial, clothMaterial, poreMap, weave, canvas, tex } from './character-kit.js';
 
@@ -11,6 +12,8 @@ export const L = {
   hip: [0.165, 1.69, 0.005], ankle: [0.118, 0.135, -0.012],
 };
 
+const LAYOUT = L;
+
 // ── torso shape: superellipse rings stacked up the body ──
 const T = {
   W: spline([[0.9, 0.36], [1.3, 0.335], [1.52, 0.35], [1.72, 0.362], [1.9, 0.33], [2.06, 0.272], [2.24, 0.278], [2.38, 0.292], [2.48, 0.3], [2.56, 0.322], [2.615, 0.336], [2.665, 0.31], [2.705, 0.24], [2.74, 0.15], [2.77, 0.104], [2.95, 0.098]]),
@@ -19,27 +22,32 @@ const T = {
   Z: spline([[0.9, 0], [2.06, 0.012], [2.4, 0.004], [2.7, -0.022], [2.95, -0.03]]),
   N: spline([[0.9, 2.2], [2.06, 2.35], [2.4, 2.55], [2.6, 2.8], [2.72, 2.4], [2.8, 2.0]]),
 };
-export const torsoZ = (y) => T.Z(y);
 const superR = (s, c, a, b, n) => 1 / Math.pow(Math.pow(Math.abs(s) / a, n) + Math.pow(Math.abs(c) / b, n), 1 / n);
-export function torsoR(th, y, ease = 0) {
-  const s = Math.sin(th), c = Math.cos(th);
-  let r = superR(s, c, T.W(y) + ease, (c >= 0 ? T.F(y) : T.B(y)) + ease, T.N(y));
-  if (c > 0) r += 0.03 * c * Math.exp(-(((Math.abs(r * s) - 0.088) / 0.075) ** 2) - ((y - 2.36) / 0.075) ** 2);
-  return r;
+// a torso from width, front, back, centre-line and squareness splines; 'bust' rounds the chest
+export function torsoShape(t, bust = 0.03) {
+  const R = (th, y, ease = 0) => {
+    const s = Math.sin(th), c = Math.cos(th);
+    let r = superR(s, c, t.W(y) + ease, (c >= 0 ? t.F(y) : t.B(y)) + ease, t.N(y));
+    if (c > 0 && bust) r += bust * c * Math.exp(-(((Math.abs(r * s) - 0.088) / 0.075) ** 2) - ((y - 2.36) / 0.075) ** 2);
+    return r;
+  };
+  return { R, Z: t.Z };
 }
+const HER = torsoShape(T);
+export const torsoZ = HER.Z, torsoR = HER.R;
 
 // a loft round the trunk: rows go up from y0 to y1
-function trunkLoft({ y0, y1, rows = 70, cols = 72, radius, dens }) {
+export function trunkLoft({ y0, y1, rows = 70, cols = 72, radius, dens, Z = T.Z }) {
   const ys = spread(rows, y0, y1, dens || ((y) => 1 + 1.4 * Math.exp(-(((y - 2.62) / 0.1) ** 2))));
   return surface(cols, rows, (i, j, p) => {
     const th = (i / cols) * TAU - PI, y = ys[j];
     const r = radius(th, y);
-    p.set(r * Math.sin(th), y, T.Z(y) + r * Math.cos(th));
+    p.set(r * Math.sin(th), y, Z(y) + r * Math.cos(th));
     return [i / cols, y / 3];
   }, { wrap: true });
 }
 // a tube hanging straight down from the origin (rows go down); radius(y, a) → [rx, rz, ox, oz]
-function tube({ top, bottom, rows = 48, cols = 28, radius, dens, cap = false }) {
+export function tube({ top, bottom, rows = 48, cols = 28, radius, dens, cap = false }) {
   const ys = spread(rows, top, bottom, dens || (() => 1));
   const geo = surface(cols, rows, (i, j, p) => {
     const a = (i / cols) * TAU - PI, y = ys[j];
@@ -59,13 +67,15 @@ const FINGERS = [
   { mcp: [0.002, -0.173, -0.046], len: [0.068, 0.04, 0.035], r: [0.0145, 0.0112], spread: -0.14 },
 ];
 const THUMB = { cmc: [-0.012, -0.032, 0.036], dir: [-0.24, -0.88, 0.4], len: [0.07, 0.056, 0.047], r: [0.021, 0.0165] };
-// finger curl (knuckle, middle, tip) for each finger, thumb curl, and spread
+// finger curl (knuckle, middle, tip) for each finger, thumb curl, and spread (or a spread per finger)
 export const HAND_POSES = {
   relax: { f: [[0.25, 0.4, 0.22], [0.32, 0.48, 0.25], [0.38, 0.55, 0.28], [0.45, 0.6, 0.3]], t: [0.15, 0.25, 0.2], s: 0.6 },
   grip: { f: [[1.05, 1.35, 0.7], [1.15, 1.45, 0.75], [1.2, 1.45, 0.75], [1.25, 1.4, 0.7]], t: [0.45, 0.55, 0.4], s: 0.2 },
   open: { f: [[0.05, 0.1, 0.05], [0.04, 0.08, 0.05], [0.06, 0.1, 0.06], [0.1, 0.12, 0.08]], t: [-0.1, 0.05, 0.05], s: 1.3 },
   hold: { f: [[0.7, 0.95, 0.5], [0.85, 1.05, 0.55], [0.95, 1.1, 0.55], [1.05, 1.1, 0.5]], t: [0.35, 0.4, 0.3], s: 0.4 },
+  peace: { f: [[0.02, 0.04, 0.02], [0.02, 0.04, 0.02], [1.3, 1.55, 0.85], [1.35, 1.5, 0.8]], t: [1.05, 0.85, 0.55], sp: [0.2, -0.16, -0.08, -0.14] },
 };
+const SPREAD = [0.07, 0, -0.06, -0.14];
 
 function fingerTube(len, r, segs = 22, cols = 12) {
   const total = len[0] + len[1] + len[2], j1 = len[0], j2 = len[0] + len[1];
@@ -97,7 +107,7 @@ function nailPatch(len, r) {
   }, { flip: true });
 }
 // palm, fingers and thumb for one hand; side 1 is her left (+x). Geometry in body space.
-function buildHand(side, B, addBone, wristPos) {
+function buildHand(side, B, addBone, wristPos, k = 1) {
   const M = new THREE.Matrix4().makeScale(side, 1, 1);
   const mirrorQ = (q) => new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeRotationFromQuaternion(q).premultiply(M).multiply(M));
   const parts = [], nails = [], chains = [];
@@ -121,8 +131,10 @@ function buildHand(side, B, addBone, wristPos) {
       p.setX(i, x * lerp(1, k, 0.5)); p.setZ(i, z * lerp(1, k, 0.5));
     }
   }
-  parts.push({ geo: palm, w: (p) => { const wf = smooth(-0.015, 0.03, p.y); return [[B['fore' + side], wf], [B['hand' + side], 1 - wf]]; } });
+  palm.scale(k, k, k);
+  parts.push({ geo: palm, w: (p) => { const wf = smooth(-0.015 * k, 0.03 * k, p.y); return [[B['fore' + side], wf], [B['hand' + side], 1 - wf]]; } });
   const chain = (name, parent, pos, q0, len, r, kind) => {
+    pos = pos.map((v) => v * k); len = len.map((v) => v * k); r = r.map((v) => v * k);
     const qb = side > 0 ? q0 : mirrorQ(q0);
     const b0 = addBone(name + 0, parent, [pos[0] * side, pos[1], pos[2]], qb);
     const b1 = addBone(name + 1, name + 0, [0, -len[0], 0]);
@@ -164,8 +176,8 @@ function buildHand(side, B, addBone, wristPos) {
 }
 
 // ── shoes, built round the ankle: x across, y up, z forward ──
-function shoeGeometry(kind) {
-  const soleY = -L.ankle[1], loafer = kind === 'loafer';
+export function shoeGeometry(kind, ankleY = L.ankle[1]) {
+  const soleY = -ankleY, loafer = kind === 'loafer';
   const zs = spread(36, -0.105, 0.39, (z) => 1 + 1.5 * smooth(0.25, 0.39, z) + smooth(-0.06, -0.105, z));
   const W = spline(loafer ? [[-0.105, 0.03], [-0.09, 0.055], [-0.02, 0.062], [0.12, 0.07], [0.24, 0.084], [0.32, 0.078], [0.37, 0.058], [0.39, 0.02]] : [[-0.105, 0.032], [-0.09, 0.058], [-0.02, 0.066], [0.12, 0.074], [0.24, 0.09], [0.32, 0.086], [0.37, 0.066], [0.39, 0.024]]);
   const H = spline(loafer ? [[-0.105, 0.03], [-0.09, 0.1], [-0.02, 0.105], [0.06, 0.1], [0.16, 0.078], [0.26, 0.058], [0.34, 0.044], [0.39, 0.02]] : [[-0.105, 0.04], [-0.09, 0.13], [-0.03, 0.14], [0.05, 0.135], [0.16, 0.1], [0.26, 0.075], [0.34, 0.058], [0.39, 0.025]]);
@@ -184,7 +196,7 @@ function shoeGeometry(kind) {
 }
 
 // ── the skeleton ──
-export function buildSkeleton(body) {
+export function buildSkeleton(body, L = LAYOUT, { handScale = 1 } = {}) {
   const bones = [], B = {};
   const addBone = (name, parent, pos, quat) => {
     const b = new THREE.Bone();
@@ -216,7 +228,7 @@ export function buildSkeleton(body) {
     const shin = addBone('shin' + side, 'thigh' + side, sub(kn, hp));
     const foot = addBone('foot' + side, 'shin' + side, sub(an, kn));
     legs[side] = { thigh, shin, foot, hp, kn, an };
-    hands[side] = buildHand(side, B, addBone, [sh[0], sh[1] - L.upper - L.fore, sh[2]]);
+    hands[side] = buildHand(side, B, addBone, [sh[0], sh[1] - L.upper - L.fore, sh[2]], handScale);
   }
   body.updateMatrixWorld(true);
   const skeleton = new THREE.Skeleton(bones);
@@ -230,11 +242,56 @@ export function buildSkeleton(body) {
     m.bind(skeleton, bindM);
     return m;
   };
-  return { bones, B, skeleton, skinned, arms, legs, hands };
+  return { bones, B, skeleton, skinned, arms, legs, hands, L };
+}
+
+// fingers ease between hand poses; goal is a key of HAND_POSES
+export function handPoser(rig) {
+  const keys = Object.keys(HAND_POSES), hand = {};
+  for (const side of [-1, 1]) { hand[side] = {}; keys.forEach((k) => (hand[side][k] = k === 'relax' ? 1 : 0)); }
+  const qz = new THREE.Quaternion(), ax = new THREE.Vector3(1, 0, 0), az = new THREE.Vector3(0, 0, 1);
+  return (side, goal, dt) => {
+    const w = hand[side];
+    let tot = 0;
+    for (const k in w) { w[k] = lerp(w[k], k === goal ? 1 : 0, 1 - Math.exp(-10 * dt)); tot += w[k]; }
+    const mix = (fn) => { let v = 0; for (const k in w) v += (w[k] / tot) * fn(HAND_POSES[k]); return v; };
+    for (const c of rig.hands[side].chains) {
+      const curls = c.kind === 'thumb' ? [0, 1, 2].map((j) => mix((P) => P.t[j])) : [0, 1, 2].map((j) => mix((P) => P.f[c.kind][j]));
+      if (c.kind === 'thumb') c.bones[0].quaternion.copy(c.rest).multiply(qz.setFromAxisAngle(az, -side * curls[0]));
+      else {
+        const sp = mix((P) => (P.sp ? P.sp[c.kind] : SPREAD[c.kind] * P.s));
+        c.bones[0].quaternion.setFromAxisAngle(ax, -sp).multiply(qz.setFromAxisAngle(az, -side * curls[0]));
+      }
+      c.bones[1].rotation.set(0, 0, -side * curls[1]);
+      c.bones[2].rotation.set(0, 0, -side * curls[2]);
+    }
+  };
+}
+// two-bone legs keep the feet planted while the hips move
+export function legPlanter(rig, hips) {
+  const v1 = new THREE.Vector3(), v2 = new THREE.Vector3(), vD = new THREE.Vector3(), qh = new THREE.Quaternion(), qk = new THREE.Quaternion(), q3 = new THREE.Quaternion(), ax = new THREE.Vector3(1, 0, 0);
+  return () => {
+    for (const side of [-1, 1]) {
+      const lg = rig.legs[side];
+      const l1 = v1.set(lg.kn[0] - lg.hp[0], lg.kn[1] - lg.hp[1], lg.kn[2] - lg.hp[2]).length();
+      const l2 = v2.set(lg.an[0] - lg.kn[0], lg.an[1] - lg.kn[1], lg.an[2] - lg.kn[2]).length();
+      hips.updateMatrix();
+      const H = vD.set(...lg.thigh.position.toArray()).applyMatrix4(hips.matrix);
+      const D = H.set(lg.an[0] - H.x, lg.an[1] - H.y, lg.an[2] - H.z);
+      const d = Math.min(D.length(), l1 + l2 - 1e-4);
+      const bend = PI - Math.acos(clamp((l1 * l1 + l2 * l2 - d * d) / (2 * l1 * l2), -1, 1));
+      lg.shin.rotation.set(bend, 0, 0);
+      qk.setFromAxisAngle(ax, bend);
+      const rest = v1.set(lg.kn[0] - lg.hp[0], lg.kn[1] - lg.hp[1], lg.kn[2] - lg.hp[2]).add(v2.applyQuaternion(qk)).normalize();
+      D.normalize().applyQuaternion(qh.copy(hips.quaternion).invert());
+      lg.thigh.quaternion.setFromUnitVectors(rest, D);
+      lg.foot.quaternion.copy(q3.copy(hips.quaternion).multiply(lg.thigh.quaternion).multiply(qk).invert());
+    }
+  };
 }
 
 // ── clothes ──
-function trunkWeights(B, y) {
+export function trunkWeights(B, y) {
   const wh = 1 - smooth(1.82, 2.04, y), wc = smooth(2.1, 2.34, y), ws = Math.max(0, 1 - wh - wc);
   const wn = smooth(2.74, 2.84, y), br = smooth(2.18, 2.36, y) * (1 - smooth(2.55, 2.7, y)) * 0.7, c = wc * (1 - wn);
   return [[B.hips, wh], [B.spine, ws], [B.chest, c * (1 - br)], [B.breath, c * br], [B.neck, wc * wn]];
@@ -263,6 +320,8 @@ function legGeo(kind) {
   const len = 1.56;
   const prof = kind === 'wide'
     ? spline([[0.1, 0.122], [0, 0.148], [-0.2, 0.148], [-0.6, 0.152], [-1.0, 0.162], [-1.4, 0.172], [-1.6, 0.176]])
+    : kind === 'straight'
+    ? spline([[0.1, 0.128], [0, 0.15], [-0.2, 0.146], [-0.5, 0.13], [-0.8, 0.114], [-1.0, 0.108], [-1.3, 0.102], [-1.5, 0.1], [-1.58, 0.102]])
     : spline([[0.1, 0.12], [0, 0.142], [-0.12, 0.138], [-0.35, 0.122], [-0.6, 0.101], [-0.76, 0.089], [-0.86, 0.087], [-1.0, 0.091], [-1.2, 0.078], [-1.42, 0.064], [-1.5, 0.065], [-1.58, 0.069]]);
   const bottom = kind === 'wide' ? -1.625 : -1.58;
   return tube({
@@ -270,14 +329,33 @@ function legGeo(kind) {
     radius: (y, a) => {
       let r = prof(y);
       if (kind === 'wide') r += (0.011 * Math.sin(a * 6 + 0.5) + 0.006 * Math.sin(a * 11 + 2)) * smooth(-0.15, -1.4, y);
+      else if (kind === 'straight') r += 0.003 * Math.sin(a * 5 + y * 9) * smooth(-0.3, -0.7, y) + 0.005 * Math.exp(-(((y + 1.5) / 0.06) ** 2)) * (0.6 + 0.4 * Math.sin(a * 4));
       else {
         r += 0.002 * Math.sin(a * 7 + y * 30) * smooth(-0.2, -0.5, y);
         r += 0.004 * Math.exp(-(((y + 1.47) / 0.05) ** 2)) * (0.6 + 0.4 * Math.sin(a * 5));
         r -= 0.003 * Math.exp(-(((y + 0.78) / 0.04) ** 2)) * Math.max(0, -Math.cos(a));
       }
-      const calf = kind === 'wide' ? 0 : -0.01 * Math.exp(-(((y + 1.0) / 0.18) ** 2));
+      const calf = kind === 'jeans' ? -0.01 * Math.exp(-(((y + 1.0) / 0.18) ** 2)) : 0;
       return [r, r * 0.96, 0, calf];
     },
+  });
+}
+
+// one trouser leg, laid along a leg of the rig and weighted to it
+export function trouserLeg(rig, side, kind) {
+  const { B, legs } = rig, lg = legs[side], geo = legGeo(kind);
+  const dir = new THREE.Vector3(lg.an[0] - lg.hp[0], lg.an[1] - lg.hp[1], lg.an[2] - lg.hp[2]);
+  const len = dir.length();
+  dir.normalize();
+  const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, -1, 0), dir);
+  geo.scale(1, len / 1.555, 1);
+  const pos = geo.attributes.position, t = [];
+  for (let i = 0; i < pos.count; i++) t.push(-pos.getY(i) / len);
+  geo.applyQuaternion(q);
+  geo.translate(...lg.hp);
+  return skinWeights(geo, (i) => {
+    const u = t[i], wk = smooth(0.44, 0.56, u), wh = 1 - smooth(-0.04, 0.1, u);
+    return [[B.hips, wh], [B['thigh' + side], (1 - wh) * (1 - wk)], [B['shin' + side], (1 - wh) * wk]];
   });
 }
 
@@ -415,23 +493,7 @@ export function dress(rig, { badge = 'Dr. Rajiea', pink = 0xff3d8b } = {}) {
   seat(0.004, denim, groups.jeans);
   seat(0.012, blackMat, groups.wide);
   for (const [kind, mat, group] of [['jeans', denim, groups.jeans], ['wide', blackMat, groups.wide]]) {
-    for (const side of [-1, 1]) {
-      const lg = legs[side], geo = legGeo(kind);
-      const dir = new THREE.Vector3(lg.an[0] - lg.hp[0], lg.an[1] - lg.hp[1], lg.an[2] - lg.hp[2]);
-      const len = dir.length();
-      dir.normalize();
-      const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, -1, 0), dir);
-      geo.scale(1, len / 1.555, 1);
-      const pos = geo.attributes.position, tmp = new THREE.Vector3(), t = [];
-      for (let i = 0; i < pos.count; i++) t.push(-pos.getY(i) / len);
-      geo.applyQuaternion(q);
-      geo.translate(...lg.hp);
-      skinWeights(geo, (i) => {
-        const u = t[i], wk = smooth(0.44, 0.56, u), wh = 1 - smooth(-0.04, 0.1, u);
-        return [[B.hips, wh], [B['thigh' + side], (1 - wh) * (1 - wk)], [B['shin' + side], (1 - wh) * wk]];
-      });
-      skinned(geo, mat, { parent: group });
-    }
+    for (const side of [-1, 1]) skinned(trouserLeg(rig, side, kind), mat, { parent: group });
   }
   // shoes ride on the feet
   const loaferMat = new THREE.MeshPhysicalMaterial({ color: 0x6b4226, roughness: 0.42, clearcoat: 0.5, clearcoatRoughness: 0.35, normalMap: weave('leather', [6, 6]), normalScale: new THREE.Vector2(0.3, 0.3) });

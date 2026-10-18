@@ -1,9 +1,9 @@
 // The 3D Rajiea (three outfits) and Little Rajiea. Generic, realistic-styled characters
 // sculpted and painted entirely in code; no photos are used anywhere.
 import * as THREE from '../vendor/three.module.min.js';
-import { studioEnvironment, contactShadow, clothMaterial, setCloth, skinMaterial, weave, canvas as makeCanvas, tex, skinWeights, surface } from './character-kit.js';
+import { studioEnvironment, contactShadow, clothMaterial, setCloth, skinMaterial, weave, canvas as makeCanvas, tex, skinWeights, surface, nextTask } from './character-kit.js';
 import { buildHead, ADULT, opening, hijabGeometry, hijabRim } from './character-head.js';
-import { L, torsoR, torsoZ, buildSkeleton, dress, HAND_POSES } from './character-body.js';
+import { L, torsoR, torsoZ, buildSkeleton, dress, handPoser, legPlanter } from './character-body.js';
 import { buildChild } from './character-child.js';
 
 const PI = Math.PI;
@@ -16,18 +16,10 @@ const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) 
 const reduceMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const COL = {
-  skin: 0xf7dccb,
-  skinShade: 0xf0c3ab,
-  freckle: 0xc98f6c,
   coat: 0xfffcf8,
-  coatShade: 0xf2e7dc,
   pink: 0xff3d8b,
   pinkSoft: 0xff8fb8,
   lip: 0xd9637c,
-  eye: 0x3a2013,
-  brow: 0x3b2416,
-  hair: 0x5a3520,
-  jeans: 0x7393c4,
   shoe: 0x6b4226,
   beige: 0xf3e1cc,
   brown: 0xb07f5c,
@@ -35,7 +27,6 @@ const COL = {
 };
 
 const std = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.6, metalness: 0, ...extra });
-const goldMat = () => std(COL.gold, { metalness: 1, roughness: 0.25 });
 
 function add(parent, geo, mat, p = [0, 0, 0], r = [0, 0, 0], s = [1, 1, 1], cast = true) {
   const m = new THREE.Mesh(geo, mat);
@@ -53,83 +44,6 @@ function lathe(points, segments = 64, samples = 48) {
   return new THREE.LatheGeometry(curve.getPoints(samples), segments);
 }
 
-// A face is an ellipsoid poking out of the head (hijab or hair).
-// placeOnFace puts a feature on its surface, facing outwards.
-const Z = new THREE.Vector3(0, 0, 1);
-function placeOnFace(F, obj, u, v, lift = 0) {
-  const k = 1 - (u / F.a) ** 2 - (v / F.b) ** 2;
-  const zz = F.d * Math.sqrt(Math.max(k, 0));
-  const n = new THREE.Vector3(u / F.a ** 2, v / F.b ** 2, zz / F.d ** 2).normalize();
-  obj.position.set(F.c.x + u, F.c.y + v, F.c.z + zz).addScaledVector(n, lift);
-  obj.quaternion.setFromUnitVectors(Z, n);
-  return obj;
-}
-
-// Eyes, brows, cheeks, freckles, nose and a mouth that can smile or grin.
-function buildFace(head, F, { eyeX = 0.245, size = 1, freckles = false, lash = true } = {}) {
-  const eyeMat = std(COL.eye, { roughness: 0.15 });
-  const shine = new THREE.MeshBasicMaterial({ color: 0xffffff });
-  const lashMat = std(0x1d120c, { roughness: 0.5 });
-  const blush = new THREE.MeshBasicMaterial({ color: COL.pinkSoft, transparent: true, opacity: 0.55, depthWrite: false });
-  const eyes = [], happyEyes = [];
-  const s = size;
-  for (const side of [-1, 1]) {
-    const socket = placeOnFace(F, new THREE.Group(), eyeX * side, 0.02 * s, -0.03 * s);
-    head.add(socket);
-    const look = new THREE.Group();
-    socket.add(look);
-    const lid = new THREE.Group();
-    look.add(lid);
-    add(lid, new THREE.SphereGeometry(0.1 * s, 32, 20), eyeMat, [0, 0, 0], [0, 0, 0], [0.86, 1.16, 0.5], false);
-    add(lid, new THREE.SphereGeometry(0.032 * s, 12, 8), shine, [0.028 * -side * s, 0.048 * s, 0.042 * s], [0, 0, 0], [1, 1, 0.5], false);
-    add(lid, new THREE.SphereGeometry(0.016 * s, 10, 8), shine, [0.03 * side * s, -0.045 * s, 0.044 * s], [0, 0, 0], [1, 1, 0.5], false);
-    if (lash) {
-      add(lid, new THREE.TorusGeometry(0.094 * s, 0.015 * s, 6, 24, PI * 0.82), lashMat, [0, 0.012 * s, 0.02 * s], [0, 0, PI * 0.09], [1, 1.2, 1], false);
-      add(lid, new THREE.CapsuleGeometry(0.012 * s, 0.045 * s, 4, 8), lashMat, [0.088 * side * s, 0.08 * s, 0.02 * s], [0, 0, -0.9 * side], [1, 1, 1], false);
-    }
-    eyes.push({ look, lid });
-    const happy = add(socket, new THREE.TorusGeometry(0.075 * s, 0.02 * s, 8, 24, PI), lashMat, [0, -0.01 * s, 0.035 * s], [0, 0, 0], [1, 1.1, 1], false);
-    happy.visible = false;
-    happyEyes.push(happy);
-    const brow = placeOnFace(F, new THREE.Group(), (eyeX + 0.005) * side, 0.215 * s, 0.004);
-    add(brow, new THREE.CapsuleGeometry(0.019 * s, 0.12 * s, 4, 10), std(COL.brow), [0, 0, 0], [0, 0, PI / 2 - 0.16 * side], [1, 1, 0.5], false);
-    head.add(brow);
-    head.add(placeOnFace(F, new THREE.Mesh(new THREE.CircleGeometry(0.085 * s, 28), blush), (eyeX + 0.175 * s) * side, -0.13 * s, 0.008));
-    if (freckles) {
-      const fm = new THREE.MeshBasicMaterial({ color: COL.freckle, transparent: true, opacity: 0.7, depthWrite: false });
-      for (const [u, v] of [[0.13, -0.07], [0.19, -0.1], [0.16, -0.135], [0.24, -0.08]]) {
-        head.add(placeOnFace(F, new THREE.Mesh(new THREE.CircleGeometry(0.0085, 10), fm), u * side, v, 0.006));
-      }
-    }
-  }
-  head.add(placeOnFace(F, new THREE.Mesh(new THREE.SphereGeometry(0.034 * s, 16, 12), std(COL.skinShade)), 0, -0.1 * s, -0.012));
-
-  const mouth = placeOnFace(F, new THREE.Group(), 0, -0.255 * s, 0.006);
-  head.add(mouth);
-  const smile = add(mouth, new THREE.TorusGeometry(0.075 * s, 0.017 * s, 8, 28, PI), std(COL.lip, { roughness: 0.4 }), [0, 0.02 * s, 0], [0, 0, PI], [1, 1, 0.6], false);
-  const grin = new THREE.Group();
-  grin.scale.setScalar(s);
-  add(grin, new THREE.CircleGeometry(0.095, 32, PI, PI), std(0x6e1a33, { roughness: 0.6 }), [0, 0.03, 0.002], [0, 0, 0], [1, 1, 1], false);
-  add(grin, new THREE.BoxGeometry(0.15, 0.03, 0.004), std(0xffffff, { roughness: 0.3 }), [0, 0.014, 0.005], [0, 0, 0], [1, 1, 1], false);
-  add(grin, new THREE.CircleGeometry(0.04, 20, 0, PI), std(0xff7a9c, { roughness: 0.6 }), [0, -0.042, 0.004], [0, 0, 0], [1, 0.8, 1], false);
-  grin.visible = false;
-  mouth.add(grin);
-
-  let expression = 'smile';
-  return {
-    setExpression(name) {
-      if (expression === name) return;
-      expression = name;
-      smile.visible = name === 'smile';
-      grin.visible = name !== 'smile';
-      const happy = name === 'happy';
-      eyes.forEach((e) => (e.look.visible = !happy));
-      happyEyes.forEach((h) => (h.visible = happy));
-    },
-    eyes,
-  };
-}
-
 // Blinking on a random rhythm
 function makeBlinker() {
   let t = 0, next = 2.5;
@@ -145,7 +59,7 @@ function makeBlinker() {
 // ── Little floating friends ──────────────────────────────────
 function makeTooth() {
   const g = new THREE.Group();
-  const white = new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.25, clearcoat: 0.8, clearcoatRoughness: 0.2 });
+  const white = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.22 });
   add(g, new THREE.SphereGeometry(0.22, 32, 20), white, [0, 0.04, 0], [0, 0, 0], [1.12, 0.86, 0.9]);
   add(g, new THREE.SphereGeometry(0.13, 24, 16), white, [-0.1, 0.17, 0]);
   add(g, new THREE.SphereGeometry(0.13, 24, 16), white, [0.1, 0.17, 0]);
@@ -173,7 +87,7 @@ function makeHeart(color = COL.pink) {
   const geo = new THREE.ExtrudeGeometry(s, { depth: 12, bevelEnabled: true, bevelSegments: 6, bevelSize: 9, bevelThickness: 9, curveSegments: 28 });
   geo.center();
   const g = new THREE.Group();
-  add(g, geo, new THREE.MeshPhysicalMaterial({ color, roughness: 0.3, clearcoat: 0.6 }), [0, 0, 0], [0, 0, PI], [0.0042, 0.0042, 0.0042]);
+  add(g, geo, new THREE.MeshStandardMaterial({ color, roughness: 0.26 }), [0, 0, 0], [0, 0, PI], [0.0042, 0.0042, 0.0042]);
   return g;
 }
 
@@ -246,6 +160,7 @@ function createStage(container, { dist = 10.4, camY = 2.05, lookY = 1.62, podium
   renderer.toneMappingExposure = 1.0;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.debug.checkShaderErrors = false;
   container.appendChild(renderer.domElement);
   const canvas = renderer.domElement;
   canvas.setAttribute('role', 'img');
@@ -410,17 +325,36 @@ function createStage(container, { dist = 10.4, camY = 2.05, lookY = 1.62, podium
     const free = !document.querySelector('body > .vault, body > .secret, body > .inbox');
     if (free !== vis.free) { vis.free = free; sync(); }
   }).observe(document.body, { childList: true });
+  // the shadow pass draws with its own depth shaders: compile those in the background too, by
+  // briefly giving every shadow caster the depth material the shadow pass will use
+  const SHADOW_SIDE = { [THREE.FrontSide]: THREE.BackSide, [THREE.BackSide]: THREE.FrontSide, [THREE.DoubleSide]: THREE.DoubleSide };
+  function warmShadows() {
+    if (!renderer.compileAsync) return null;
+    const swaps = [];
+    scene.traverse((o) => {
+      const m = o.material;
+      if (!o.isMesh || !o.castShadow || !m || Array.isArray(m)) return;
+      swaps.push([o, m]);
+      o.material = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, side: m.shadowSide ?? SHADOW_SIDE[m.side], map: m.map ?? null, alphaMap: m.alphaMap ?? null, alphaTest: m.alphaTest ?? 0 });
+    });
+    let done;
+    try { done = renderer.compileAsync(scene, camera); } finally { swaps.forEach(([o, m]) => (o.material = m)); }
+    return done;
+  }
   // first start: compile every shader in the background (so the page never freezes), then fade in
-  let starting = false;
+  // start compiling what is already built while the rest is still being made
+  stage.precompile = () => { Promise.resolve(renderer.compileAsync?.(scene, camera)).catch(() => {}); };
+  let starting = false, shown;
+  stage.shown = new Promise((r) => (shown = r));
   stage.start = () => {
     if (ready || starting) return sync();
     starting = true;
     canvas.style.opacity = '0';
-    Promise.resolve(renderer.compileAsync?.(scene, camera)).catch(() => {}).then(() => {
+    Promise.resolve(renderer.compileAsync?.(scene, camera)).catch(() => {}).then(warmShadows).catch(() => {}).then(() => {
       ready = true;
       sync();
       canvas.style.transition = 'opacity 0.6s ease';
-      requestAnimationFrame(() => requestAnimationFrame(() => (canvas.style.opacity = '')));
+      requestAnimationFrame(() => requestAnimationFrame(() => { canvas.style.opacity = ''; shown(); }));
     });
   };
   return stage;
@@ -467,11 +401,11 @@ const POSES = {
 };
 
 // ── props she holds ──
-const glossy = (color, extra = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.32, clearcoat: 0.7, clearcoatRoughness: 0.18, ...extra });
+const glossy = (color, { roughness = 0.26 } = {}) => new THREE.MeshStandardMaterial({ color, roughness });
 function makeBrush() {
   const g = new THREE.Group();
   add(g, lathe([[0, -0.15], [0.016, -0.15], [0.02, -0.12], [0.019, 0.0], [0.015, 0.12], [0.009, 0.2], [0.008, 0.235], [0, 0.236]], 24, 30), glossy(COL.pink), [0, 0, 0]);
-  add(g, lathe([[0, -0.1], [0.0205, -0.1], [0.021, -0.02], [0.0195, 0.04], [0, 0.04]], 24, 12), glossy(0xffffff, { roughness: 0.5, clearcoat: 0 }), [0, -0.04, 0], [0, 0, 0], [1.02, 1, 1.05]);
+  add(g, lathe([[0, -0.1], [0.0205, -0.1], [0.021, -0.02], [0.0195, 0.04], [0, 0.04]], 24, 12), glossy(0xffffff, { roughness: 0.5 }), [0, -0.04, 0], [0, 0, 0], [1.02, 1, 1.05]);
   const head = new THREE.Group();
   head.position.set(0, 0.255, 0.004);
   add(head, new THREE.CapsuleGeometry(0.011, 0.045, 4, 12), glossy(COL.pink), [0, 0, 0], [0, 0, 0], [1.3, 1, 0.75]);
@@ -482,10 +416,10 @@ function makeBrush() {
 }
 function makeCup() {
   const g = new THREE.Group();
-  const ceramic = glossy(0xfbf9f6, { roughness: 0.22, clearcoat: 0.9 });
+  const ceramic = glossy(0xfbf9f6, { roughness: 0.18 });
   add(g, new THREE.LatheGeometry([[0, 0], [0.045, 0], [0.05, 0.006], [0.056, 0.06], [0.064, 0.15], [0.066, 0.163], [0.064, 0.167], [0.06, 0.166], [0.058, 0.15], [0.05, 0.02], [0, 0.018]].map(([x, y]) => new THREE.Vector2(x, y)), 40), ceramic, [0, -0.06, 0]);
   add(g, new THREE.CylinderGeometry(0.0595, 0.0595, 0.035, 32, 1, true), glossy(COL.pink, { roughness: 0.4 }), [0, 0.02, 0], [0, 0, 0], [1.075, 1, 1.075]);
-  const brew = add(g, new THREE.CircleGeometry(0.058, 32), new THREE.MeshPhysicalMaterial({ color: 0xb07f5c, roughness: 0.3, clearcoat: 0.5 }), [0, 0.085, 0], [-PI / 2, 0, 0]);
+  const brew = add(g, new THREE.CircleGeometry(0.058, 32), new THREE.MeshStandardMaterial({ color: 0xb07f5c, roughness: 0.25 }), [0, 0.085, 0], [-PI / 2, 0, 0]);
   add(g, new THREE.TorusGeometry(0.03, 0.008, 10, 24, PI * 1.2), ceramic, [0.066, 0.03, 0], [0, 0, -PI * 0.6]);
   g.userData.brew = brew;
   return g;
@@ -578,7 +512,7 @@ function crossBag(rig) {
   return group;
 }
 
-export function createRajiea(container, { bubble, lines = [], badge = 'Dr. Rajiea', view, fixed = false, extend } = {}) {
+export async function createRajiea(container, { bubble, lines = [], badge = 'Dr. Rajiea', view, fixed = false, extend } = {}) {
   const FULL = { dist: 8.3, camY: 2.15, lookY: 1.86 };
   const CLOSE = { dist: 1.5, camY: 3.06, lookY: 3.0 };
   const stage = createStage(container, { ...FULL, podium: 0.78, shadowTop: 4, ...view });
@@ -592,9 +526,13 @@ export function createRajiea(container, { bubble, lines = [], badge = 'Dr. Rajie
   char.add(contactShadow(1.0, 0.8, 0.5));
 
   // skeleton, clothes and hands
+  await nextTask();
   const rig = buildSkeleton(body);
   rig.body = body;
+  await nextTask();
   const wardrobe = dress(rig, { badge });
+  stage.precompile();
+  await nextTask();
   const { groups, mats } = wardrobe;
   const skinMat = skinMaterial({ color: 0xf1cdb9, roughness: 0.5 });
   const nailMat = new THREE.MeshPhysicalMaterial({ color: 0xf4cbc6, roughness: 0.3, clearcoat: 0.9, clearcoatRoughness: 0.1 });
@@ -611,7 +549,9 @@ export function createRajiea(container, { bubble, lines = [], badge = 'Dr. Rajie
   headRig.position.set(L.head.x - L.headPivot[0], L.head.y - L.headPivot[1], L.head.z - L.headPivot[2]);
   head.add(headRig);
   const fit = opening(undefined, 0.8);
-  const face = buildHead(headRig, ADULT, { keep: (x, y) => fit.inside(x, y) });
+  const face = await buildHead(headRig, ADULT, { keep: (x, y) => fit.inside(x, y) });
+  stage.precompile();
+  await nextTask();
 
   // hijab: draped cloth with a soft sheen and a rolled edge round the face
   const hijabMat = clothMaterial({ color: 0x26222a, roughness: 0.9, sheen: 0.85, sheenRoughness: 0.5, sheenTint: 0.42, specularIntensity: 0.18, normalMap: weave('jersey', [26, 26]), normalScale: 0.45, side: THREE.DoubleSide });
@@ -619,6 +559,7 @@ export function createRajiea(container, { bubble, lines = [], badge = 'Dr. Rajie
   const rim = new THREE.Mesh(hijabRim(face.sc), hijabMat);
   rim.castShadow = true;
   headRig.add(rim);
+  await nextTask();
   const ends = scarfEnds(rig, hijabMat);
   const bag = crossBag(rig);
 
@@ -635,7 +576,7 @@ export function createRajiea(container, { bubble, lines = [], badge = 'Dr. Rajie
   const brew = cup.userData.brew;
   const phone = makePhone();
   gripR.add(phone);
-  const gold = new THREE.MeshPhysicalMaterial({ color: 0xe6b866, metalness: 1, roughness: 0.22, clearcoat: 0.4 });
+  const gold = new THREE.MeshStandardMaterial({ color: 0xe6b866, metalness: 1, roughness: 0.22 });
   const bangle = new THREE.Mesh(new THREE.TorusGeometry(0.052, 0.006, 10, 48), gold);
   bangle.rotation.x = PI / 2;
   bangle.position.set(0.003, -L.fore + 0.03, 0);
@@ -691,46 +632,9 @@ export function createRajiea(container, { bubble, lines = [], badge = 'Dr. Rajie
 
   // natural life: breathing, a slow shift of weight, glances and small head moves
   const life = { sacc: 0, sx: 0, sy: 0, gx: 0, gy: 0 };
-  const hand = { [-1]: { relax: 1, grip: 0, open: 0, hold: 0 }, [1]: { relax: 1, grip: 0, open: 0, hold: 0 } };
-  const qz = new THREE.Quaternion(), qx = new THREE.Quaternion(), ax = new THREE.Vector3(1, 0, 0), az = new THREE.Vector3(0, 0, 1);
-  function poseHand(side, goal, dt) {
-    const w = hand[side];
-    let tot = 0;
-    for (const k in w) { w[k] = damp(w[k], k === goal ? 1 : 0, 10, dt); tot += w[k]; }
-    const mix = (fn) => { let v = 0; for (const k in w) v += (w[k] / tot) * fn(HAND_POSES[k]); return v; };
-    for (const c of rig.hands[side].chains) {
-      const curls = c.kind === 'thumb' ? [0, 1, 2].map((j) => mix((P) => P.t[j])) : [0, 1, 2].map((j) => mix((P) => P.f[c.kind][j]));
-      const s = mix((P) => P.s);
-      if (c.kind === 'thumb') c.bones[0].quaternion.copy(c.rest).multiply(qz.setFromAxisAngle(az, -side * curls[0]));
-      else {
-        const sp = [0.07, 0, -0.06, -0.14][c.kind];
-        c.bones[0].quaternion.setFromAxisAngle(ax, -sp * s).multiply(qz.setFromAxisAngle(az, -side * curls[0]));
-      }
-      c.bones[1].rotation.set(0, 0, -side * curls[1]);
-      c.bones[2].rotation.set(0, 0, -side * curls[2]);
-    }
-  }
-  // two-bone legs keep the feet planted while the hips move
-  const v1 = new THREE.Vector3(), v2 = new THREE.Vector3(), vD = new THREE.Vector3(), qh = new THREE.Quaternion(), qk = new THREE.Quaternion(), q3 = new THREE.Quaternion();
-  function plantLegs() {
-    for (const side of [-1, 1]) {
-      const lg = rig.legs[side];
-      const l1 = v1.set(lg.kn[0] - lg.hp[0], lg.kn[1] - lg.hp[1], lg.kn[2] - lg.hp[2]).length();
-      const l2 = v2.set(lg.an[0] - lg.kn[0], lg.an[1] - lg.kn[1], lg.an[2] - lg.kn[2]).length();
-      hips.updateMatrix();
-      const H = vD.set(...lg.thigh.position.toArray()).applyMatrix4(hips.matrix);
-      const D = H.set(lg.an[0] - H.x, lg.an[1] - H.y, lg.an[2] - H.z);
-      const d = Math.min(D.length(), l1 + l2 - 1e-4);
-      const bend = PI - Math.acos(clamp((l1 * l1 + l2 * l2 - d * d) / (2 * l1 * l2), -1, 1));
-      lg.shin.rotation.set(bend, 0, 0);
-      qk.setFromAxisAngle(ax, bend);
-      const rest = v1.set(lg.kn[0] - lg.hp[0], lg.kn[1] - lg.hp[1], lg.kn[2] - lg.hp[2]).add(v2.applyQuaternion(qk)).normalize();
-      D.normalize().applyQuaternion(qh.copy(hips.quaternion).invert());
-      lg.thigh.quaternion.setFromUnitVectors(rest, D);
-      lg.foot.quaternion.copy(q3.copy(hips.quaternion).multiply(lg.thigh.quaternion).multiply(qk).invert());
-    }
-  }
+  const poseHand = handPoser(rig), plantLegs = legPlanter(rig, hips);
 
+  const headPos = new THREE.Vector3();
   stage.update = (dt) => {
     const time = stage.time;
     idleTimer += dt;
@@ -838,12 +742,12 @@ export function createRajiea(container, { bubble, lines = [], badge = 'Dr. Rajie
     if (face.expression !== expr) face.setExpression(expr);
     if (!reduceMotion() && !action && !api.calm && idleTimer > 11) play(Math.random() < 0.5 ? 'wave' : 'wink');
 
-    // arms (her right arm mirrors its sideways angle); palms turn forward when the arm is up
+    // arms (her right arm mirrors its sideways angle); palms turn forward when the arm is up, or by 'et'
     const twist = (s, sz) => s * 1.35 * smooth(1.3, 2.2, sz);
     armR.shoulder.rotation.set(r.sx, 0, -r.sz);
-    armR.elbow.rotation.set(r.ex, twist(-1, r.sz), -r.ez);
+    armR.elbow.rotation.set(r.ex, twist(-1, r.sz) + (r.et || 0), -r.ez);
     armL.shoulder.rotation.set(l.sx, 0, l.sz);
-    armL.elbow.rotation.set(l.ex, twist(1, l.sz), l.ez);
+    armL.elbow.rotation.set(l.ex, twist(1, l.sz) + (l.et || 0), l.ez);
     armR.hand.rotation.set(0.04, 0, 0.12);
     armL.hand.rotation.set(0.04, 0, -0.12);
 
@@ -879,12 +783,14 @@ export function createRajiea(container, { bubble, lines = [], badge = 'Dr. Rajie
     cup.visible = propNow === 'cup';
     phone.visible = propNow === 'phone';
     brew.material.color.setHex(action?.type === 'matcha' ? 0x9cc46a : 0xb07f5c);
-    poseHand(1, open.l > 0.5 ? 'open' : propNow === 'brush' ? 'grip' : propNow === 'cup' ? 'hold' : action?.type === 'candy' ? 'grip' : 'relax', dt);
-    poseHand(-1, open.r > 0.5 ? 'open' : propNow === 'phone' ? 'hold' : action?.type === 'candy' || action?.type === 'sneeze' ? 'grip' : 'relax', dt);
+    poseHand(1, P?.hand?.l ?? (open.l > 0.5 ? 'open' : propNow === 'brush' ? 'grip' : propNow === 'cup' ? 'hold' : action?.type === 'candy' ? 'grip' : 'relax'), dt);
+    poseHand(-1, P?.hand?.r ?? (open.r > 0.5 ? 'open' : propNow === 'phone' ? 'hold' : action?.type === 'candy' || action?.type === 'sneeze' ? 'grip' : 'relax'), dt);
     char.updateMatrixWorld(true);
     upright(brush); upright(cupHold); upright(phone);
     const o = blink(dt) * squint;
-    face.update(dt, { open: [o, wink ? 0 : o], lookX: lookX + life.gx, lookY: lookY + life.gy, blush: blushing });
+    // fine skin detail only close up
+    const detail = clamp((3.4 - stage.camera.position.distanceTo(head.getWorldPosition(headPos))) / 2.2, 0, 1);
+    face.update(dt, { open: [o, wink ? 0 : o], lookX: lookX + life.gx, lookY: lookY + life.gy, blush: blushing, detail });
     floats.update(time, dt, lookX);
   };
   const headTop = new THREE.Vector3(0, 0.32, 0);
@@ -904,7 +810,9 @@ export function createRajiea(container, { bubble, lines = [], badge = 'Dr. Rajie
   api.stage = stage;
   api.char = char;
   // let a caller add more to this stage
-  if (extend) extend({ THREE, stage, scene, char, body, head, add, lathe, std, COL, buildFace, makeBlinker, placeOnFace, makeHeart, damp, lerp, clamp, reduceMotion, api });
+  // a second figure (a grown man) can be added to the same stage: man(look) resolves to his controls
+  const man = async (look) => (await import('./character-man.js')).createMan({ stage, scene, makeBlinker, reduceMotion }, look);
+  if (extend) await extend({ THREE, stage, scene, char, body, head, add, lathe, std, COL, makeBlinker, makeHeart, damp, lerp, clamp, reduceMotion, api, man });
   stage.onTap = (raycaster) => {
     const kind = floats.hit(raycaster);
     if (kind) { api.onPop?.(kind); return; }
@@ -921,7 +829,7 @@ export function createRajiea(container, { bubble, lines = [], badge = 'Dr. Rajie
 // ════════════════════════════════════════════════════════════
 //  Little Rajiea
 // ════════════════════════════════════════════════════════════
-export function createLittleRajiea(container, { bubble, lines = [], view } = {}) {
+export async function createLittleRajiea(container, { bubble, lines = [], view } = {}) {
   const stage = createStage(container, { dist: 6.7, camY: 1.62, lookY: 1.22, podium: 0.85, shadowTop: 3.2, ...view });
   const { scene } = stage;
   stage.canvas.setAttribute('aria-label', '3D Little Rajiea. Tap her to make her giggle.');
@@ -931,7 +839,8 @@ export function createLittleRajiea(container, { bubble, lines = [], view } = {})
   char.add(body);
   char.add(contactShadow(0.9, 0.7, 0.5));
   scene.add(char);
-  const kid = buildChild(body);
+  await nextTask();
+  const kid = await buildChild(body);
   const [armR, armL] = kid.arms;
   const { head, face } = kid;
   const toy = makeToy();

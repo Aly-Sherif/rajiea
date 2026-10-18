@@ -11,6 +11,12 @@ export const gauss = (x, y, cx, cy, sx, sy) => Math.exp(-(((x - cx) / sx) ** 2) 
 // smooth max / min (polynomial), k = blend width
 export const smax = (a, b, k) => { const h = clamp(0.5 + (0.5 * (a - b)) / k, 0, 1); return lerp(b, a, h) + k * h * (1 - h); };
 export const smin = (a, b, k) => -smax(-a, -b, k);
+// let the page breathe between heavy build steps
+// phones get smaller generated textures (quicker to paint and upload)
+export const SMALL_SCREEN = typeof matchMedia === 'function' && matchMedia('(max-width: 640px)').matches;
+export const nextTask = () => (globalThis.scheduler?.yield ? globalThis.scheduler.yield() : new Promise((r) => setTimeout(r, 0)));
+// a texture that shares its pixels with a cached one, with its own tiling
+const tiled = (base, repeat) => { const t = base.clone(); t.repeat.set(...repeat); return t; };
 
 export function rng(a = 1) {
   return () => {
@@ -223,35 +229,34 @@ export function weave(kind, repeat = [1, 1]) {
         h[y * S + x] = val * 0.8 + n[y * S + x] * 0.2;
       }
     }
-    weaveCache.set(key, h);
+    const strength = { twill: 1.4, denim: 2.2, rib: 3, knit: 3.2, jersey: 1.6, leather: 3, chiffon: 1.2 }[kind] ?? 1.5;
+    weaveCache.set(key, normalMap(h, S, strength, [1, 1]));
   }
-  const strength = { twill: 1.4, denim: 2.2, rib: 3, knit: 3.2, jersey: 1.6, leather: 3, chiffon: 1.2 }[kind] ?? 1.5;
-  return normalMap(weaveCache.get(key), 256, strength, repeat);
+  return tiled(weaveCache.get(key), repeat);
 }
 function fbmCell(x, y) { return 0.5 + 0.5 * Math.sin(x * 0.9) * Math.sin(y * 0.7 + Math.sin(x * 0.3) * 2); }
 
 // tiny skin pores and fine lines
-let poreH = null;
+let poreTex = null;
 export function poreMap(repeat = [6, 6]) {
-  if (!poreH) {
-    const S = 256, cv = canvas(S), g = cv.getContext('2d'), r = rng(11);
-    g.fillStyle = 'rgb(160,160,160)';
-    g.fillRect(0, 0, S, S);
+  if (!poreTex) {
+    const S = 256, h = new Float32Array(S * S).fill(160 / 255), r = rng(11);
     for (let k = 0; k < 900; k++) {
-      const x = r() * S, y = r() * S, rad = 0.8 + r() * 1.6;
-      for (const [ox, oy] of [[0, 0], [S, 0], [-S, 0], [0, S], [0, -S]]) {
-        const grd = g.createRadialGradient(x + ox, y + oy, 0, x + ox, y + oy, rad);
-        grd.addColorStop(0, 'rgba(60,60,60,0.8)');
-        grd.addColorStop(1, 'rgba(60,60,60,0)');
-        g.fillStyle = grd;
-        g.fillRect(x + ox - rad, y + oy - rad, rad * 2, rad * 2);
+      const x = r() * S, y = r() * S, rad = 0.8 + r() * 1.6, R = Math.ceil(rad);
+      for (let dy = -R; dy <= R; dy++) {
+        for (let dx = -R; dx <= R; dx++) {
+          const px = Math.floor(x) + dx, py = Math.floor(y) + dy, d = Math.hypot(px + 0.5 - x, py + 0.5 - y) / rad;
+          if (d >= 1) continue;
+          const i = (((py % S) + S) % S) * S + (((px % S) + S) % S), a = 0.8 * (1 - d);
+          h[i] = h[i] * (1 - a) + (60 / 255) * a;
+        }
       }
     }
-    poreH = heightOf(cv);
     const n = fbm(S, { octaves: 4, base: 6, seed: 5 });
-    for (let i = 0; i < poreH.length; i++) poreH[i] = poreH[i] * 0.75 + n[i] * 0.35;
+    for (let i = 0; i < h.length; i++) h[i] = h[i] * 0.75 + n[i] * 0.35;
+    poreTex = normalMap(h, S, 2.2, [1, 1]);
   }
-  return normalMap(poreH, 256, 2.2, repeat);
+  return tiled(poreTex, repeat);
 }
 
 // ── materials ──

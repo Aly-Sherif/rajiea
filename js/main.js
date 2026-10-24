@@ -18,6 +18,7 @@ const esc = (x) => String(x).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&
 // ── Title letters & rotating tagline ──
 const titleEn = $('#titleEn');
 titleEn.innerHTML = [...CONFIG.name].map((ch, i) => `<span class="ch" style="--i:${i}">${ch}</span>`).join('');
+titleEn.classList.add('split');
 $$('.ch', titleEn).forEach((el) => el.addEventListener('pointerenter', () => {
   el.classList.remove('jig');
   void el.offsetWidth;

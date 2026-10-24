@@ -324,11 +324,16 @@ html.known .loader { display: grid; }
 .title { display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline; gap: 0 18px; margin: 16px 0 6px; cursor: default; }
 .title-en {
   font-family: 'Fraunces', serif; font-weight: 600; font-size: clamp(66px, 17vw, 150px); letter-spacing: -0.045em; line-height: 0.95;
-  background: linear-gradient(100deg, var(--pink-d) 0%, var(--pink) 35%, #ff9cc8 50%, var(--pink) 65%, var(--pink-d) 100%); background-size: 200% 100%;
+  --name-grad: linear-gradient(100deg, var(--pink-d) 0%, var(--pink) 35%, #ff9cc8 50%, var(--pink) 65%, var(--pink-d) 100%);
+  background: var(--name-grad); background-size: 200% 100%;
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
+/* once the name is split into letters, only the letters paint the gradient: a second copy on the
+   whole word was left behind as smeared ghost letters when they moved (hover, mouse parallax) */
+.title-en.split { background: none; }
+.title-en { margin-bottom: 0.14em; } /* room for the j's tail above the tagline */
 @keyframes sheen { to { background-position: -200% 0; } }
-.ch { display: inline-block; background: inherit; background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; }
+.ch { display: inline-block; padding-bottom: 0.2em; margin-bottom: -0.2em; background: var(--name-grad); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; } /* the extra room keeps the j's tail inside the painted area */
 body.ready .ch { animation: drop 1s var(--ease) both; animation-delay: calc(var(--i) * 70ms + 0.15s); }
 body.ready .ch.jig { animation: jig 0.6s ease both; }
 @keyframes drop { from { opacity: 0; transform: translateY(0.4em) rotate(6deg); filter: blur(8px); } to { opacity: 1; transform: none; filter: none; } }
